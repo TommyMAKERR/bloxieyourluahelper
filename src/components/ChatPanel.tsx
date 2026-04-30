@@ -3,6 +3,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Send, Sparkles, Copy, Check, Bot, User } from "lucide-react";
 import { toast } from "sonner";
+import LinkStudioButton, { loadStudioContext, type StudioContext } from "./LinkStudioButton";
 
 type Msg = { role: "user" | "assistant"; content: string };
 
@@ -50,7 +51,12 @@ export default function ChatPanel() {
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [studio, setStudio] = useState<StudioContext | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setStudio(loadStudioContext());
+  }, []);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
@@ -67,6 +73,22 @@ export default function ChatPanel() {
     const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/lua-chat`;
     let assistantSoFar = "";
 
+    // Build payload — prepend studio context as a system note if linked
+    const payloadMessages = studio && (studio.placeUrl || studio.gameType || studio.notes)
+      ? [
+          {
+            role: "system" as const,
+            content: `The user has linked their Roblox game. Tailor every script to it:
+${studio.placeUrl ? `- Place URL: ${studio.placeUrl}` : ""}
+${studio.placeId ? `- Place ID: ${studio.placeId}` : ""}
+${studio.gameType ? `- Game type: ${studio.gameType}` : ""}
+${studio.notes ? `- What's already in the game:\n${studio.notes}` : ""}
+Reference these details when relevant (e.g. use existing folders/leaderstats they mentioned).`,
+          },
+          ...next,
+        ]
+      : next;
+
     try {
       const resp = await fetch(CHAT_URL, {
         method: "POST",
@@ -74,7 +96,7 @@ export default function ChatPanel() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
         },
-        body: JSON.stringify({ messages: next }),
+        body: JSON.stringify({ messages: payloadMessages }),
       });
 
       if (resp.status === 429) {
@@ -146,7 +168,7 @@ export default function ChatPanel() {
 
   return (
     <div className="flex h-[calc(100vh-2rem)] flex-col gap-4 rounded-3xl border border-border bg-card/60 p-4 backdrop-blur-sm shadow-card md:p-6">
-      <div className="flex items-center gap-3 border-b border-border pb-4">
+      <div className="flex flex-wrap items-center gap-3 border-b border-border pb-4">
         <div className="flex h-11 w-11 items-center justify-center rounded-2xl gradient-hero shadow-neon">
           <Bot className="h-6 w-6 text-primary-foreground" />
         </div>
@@ -154,9 +176,12 @@ export default function ChatPanel() {
           <h2 className="text-xl font-bold">Bloxie</h2>
           <p className="text-xs text-muted-foreground">Your Roblox Lua scripting buddy 🎮</p>
         </div>
-        <div className="ml-auto flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1.5 text-xs font-medium text-primary">
-          <span className="h-2 w-2 rounded-full bg-primary animate-pulse" />
-          Online
+        <div className="ml-auto flex items-center gap-2">
+          <LinkStudioButton onChange={setStudio} />
+          <div className="hidden items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1.5 text-xs font-medium text-primary sm:flex">
+            <span className="h-2 w-2 rounded-full bg-primary animate-pulse" />
+            Online
+          </div>
         </div>
       </div>
 
