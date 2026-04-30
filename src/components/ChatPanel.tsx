@@ -74,16 +74,17 @@ export default function ChatPanel() {
     let assistantSoFar = "";
 
     // Build payload — prepend studio context as a system note if linked
-    const payloadMessages = studio && (studio.placeUrl || studio.gameType || studio.notes)
+    const hasCtx = studio && (studio.placeUrl || studio.gameType || studio.notes || studio.snapshot);
+    const payloadMessages = hasCtx
       ? [
           {
             role: "system" as const,
-            content: `The user has linked their Roblox game. Tailor every script to it:
-${studio.placeUrl ? `- Place URL: ${studio.placeUrl}` : ""}
-${studio.placeId ? `- Place ID: ${studio.placeId}` : ""}
-${studio.gameType ? `- Game type: ${studio.gameType}` : ""}
-${studio.notes ? `- What's already in the game:\n${studio.notes}` : ""}
-Reference these details when relevant (e.g. use existing folders/leaderstats they mentioned).`,
+            content: `The user has linked their Roblox game. Tailor every script to it and reference REAL instances from their game tree when relevant. The user is only suggesting changes — never claim you edited their game; always give them a script to paste.
+${studio!.placeUrl ? `- Place URL: ${studio!.placeUrl}` : ""}
+${studio!.placeId ? `- Place ID: ${studio!.placeId}` : ""}
+${studio!.gameType ? `- Game type: ${studio!.gameType}` : ""}
+${studio!.notes ? `- Notes: ${studio!.notes}` : ""}
+${studio!.snapshot ? `\n--- READ-ONLY GAME TREE SNAPSHOT (from scanner script) ---\n${studio!.snapshot}\n--- END SNAPSHOT ---\nUse exact names from this tree when writing scripts (e.g. game.Workspace.<RealName>, game.ReplicatedStorage.<RealFolder>). If the user asks about something not in the tree, mention they may need to add it first.` : ""}`,
           },
           ...next,
         ]
