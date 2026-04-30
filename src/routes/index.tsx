@@ -33,7 +33,9 @@ function Index() {
               <h1 className="text-2xl font-bold tracking-tight">
                 Bloxie<span className="gradient-text">.lua</span>
               </h1>
-              <p className="text-xs text-muted-foreground">Roblox scripting, but fun.</p>
+              <p className="text-xs text-muted-foreground">
+                Powered by <span className="font-semibold text-accent">babafarr</span> · Roblox scripting, but fun.
+              </p>
             </div>
           </div>
           <div className="hidden items-center gap-4 md:flex">
