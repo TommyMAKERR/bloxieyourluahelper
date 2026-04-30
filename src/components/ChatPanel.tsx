@@ -3,6 +3,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Send, Sparkles, Copy, Check, Bot, User } from "lucide-react";
 import { toast } from "sonner";
+import LinkStudioButton, { loadStudioContext, type StudioContext } from "./LinkStudioButton";
 
 type Msg = { role: "user" | "assistant"; content: string };
 
