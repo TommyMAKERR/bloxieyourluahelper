@@ -168,7 +168,7 @@ Reference these details when relevant (e.g. use existing folders/leaderstats the
 
   return (
     <div className="flex h-[calc(100vh-2rem)] flex-col gap-4 rounded-3xl border border-border bg-card/60 p-4 backdrop-blur-sm shadow-card md:p-6">
-      <div className="flex items-center gap-3 border-b border-border pb-4">
+      <div className="flex flex-wrap items-center gap-3 border-b border-border pb-4">
         <div className="flex h-11 w-11 items-center justify-center rounded-2xl gradient-hero shadow-neon">
           <Bot className="h-6 w-6 text-primary-foreground" />
         </div>
@@ -176,9 +176,12 @@ Reference these details when relevant (e.g. use existing folders/leaderstats the
           <h2 className="text-xl font-bold">Bloxie</h2>
           <p className="text-xs text-muted-foreground">Your Roblox Lua scripting buddy 🎮</p>
         </div>
-        <div className="ml-auto flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1.5 text-xs font-medium text-primary">
-          <span className="h-2 w-2 rounded-full bg-primary animate-pulse" />
-          Online
+        <div className="ml-auto flex items-center gap-2">
+          <LinkStudioButton onChange={setStudio} />
+          <div className="hidden items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1.5 text-xs font-medium text-primary sm:flex">
+            <span className="h-2 w-2 rounded-full bg-primary animate-pulse" />
+            Online
+          </div>
         </div>
       </div>
 
