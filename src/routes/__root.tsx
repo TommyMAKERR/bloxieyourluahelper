@@ -29,14 +29,18 @@ export const Route = createRootRoute({
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Lovable App" },
-      { name: "description", content: "Lovable Generated Project" },
+      { title: "the ONLY lua helper for... YOU" },
+      { name: "description", content: "this  is a roblox helper for you and i recon it will be super easy for u and i would say PLZ USE IT" },
       { name: "author", content: "Lovable" },
-      { property: "og:title", content: "Lovable App" },
-      { property: "og:description", content: "Lovable Generated Project" },
+      { property: "og:title", content: "the ONLY lua helper for... YOU" },
+      { property: "og:description", content: "this  is a roblox helper for you and i recon it will be super easy for u and i would say PLZ USE IT" },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "twitter:site", content: "@Lovable" },
+      { name: "twitter:title", content: "the ONLY lua helper for... YOU" },
+      { name: "twitter:description", content: "this  is a roblox helper for you and i recon it will be super easy for u and i would say PLZ USE IT" },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/fb38310e-a316-4eb7-88ac-a634ba505be6/id-preview-e445e5b4--dc304bb1-88b7-4702-a230-02af16013bd1.lovable.app-1777585973694.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/fb38310e-a316-4eb7-88ac-a634ba505be6/id-preview-e445e5b4--dc304bb1-88b7-4702-a230-02af16013bd1.lovable.app-1777585973694.png" },
     ],
     links: [
       {
