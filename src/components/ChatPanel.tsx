@@ -1,9 +1,11 @@
 import { useState, useRef, useEffect } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { Send, Sparkles, Copy, Check, Bot, User } from "lucide-react";
+import { Send, Sparkles, Copy, Check, Bot, User, Laptop } from "lucide-react";
 import { toast } from "sonner";
 import LinkStudioButton, { loadStudioContext, type StudioContext } from "./LinkStudioButton";
+
+const LITE_KEY = "bloxie:studio-lite";
 
 type Msg = { role: "user" | "assistant"; content: string };
 
