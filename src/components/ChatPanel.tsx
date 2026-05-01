@@ -90,20 +90,33 @@ export default function ChatPanel() {
 
     // Build payload — prepend studio context as a system note if linked
     const hasCtx = studio && (studio.placeUrl || studio.gameType || studio.notes || studio.snapshot);
-    const payloadMessages = hasCtx
-      ? [
-          {
-            role: "system" as const,
-            content: `The user has linked their Roblox game. Tailor every script to it and reference REAL instances from their game tree when relevant. The user is only suggesting changes — never claim you edited their game; always give them a script to paste.
+    const systemMessages: { role: "system"; content: string }[] = [];
+
+    if (liteMode) {
+      systemMessages.push({
+        role: "system",
+        content: `STUDIO LITE MODE — the user is editing in Roblox Studio Lite (browser-based, mobile/Chromebook friendly). Constraints:
+- Studio Lite has NO Command Bar, NO plugins, and NO Output window. Do NOT tell the user to "paste this into the Command Bar" or "install a plugin".
+- Only give scripts they can create as a Script / LocalScript / ModuleScript inside the Explorer (e.g. ServerScriptService, StarterPlayerScripts, StarterGui, ReplicatedStorage, inside a Tool/Part).
+- Always tell them step-by-step where to right-click → Insert Object → Script, and what to name it.
+- Avoid features that require desktop Studio (Terrain editor, advanced plugins, MeshPart importing from file). Suggest in-game/script alternatives instead.
+- Keep code short and self-contained when possible — Studio Lite users often work on small screens.`,
+      });
+    }
+
+    if (hasCtx) {
+      systemMessages.push({
+        role: "system",
+        content: `The user has linked their Roblox game. Tailor every script to it and reference REAL instances from their game tree when relevant. The user is only suggesting changes — never claim you edited their game; always give them a script to paste.
 ${studio!.placeUrl ? `- Place URL: ${studio!.placeUrl}` : ""}
 ${studio!.placeId ? `- Place ID: ${studio!.placeId}` : ""}
 ${studio!.gameType ? `- Game type: ${studio!.gameType}` : ""}
 ${studio!.notes ? `- Notes: ${studio!.notes}` : ""}
 ${studio!.snapshot ? `\n--- READ-ONLY GAME TREE SNAPSHOT (from scanner script) ---\n${studio!.snapshot}\n--- END SNAPSHOT ---\nUse exact names from this tree when writing scripts (e.g. game.Workspace.<RealName>, game.ReplicatedStorage.<RealFolder>). If the user asks about something not in the tree, mention they may need to add it first.` : ""}`,
-          },
-          ...next,
-        ]
-      : next;
+      });
+    }
+
+    const payloadMessages = systemMessages.length ? [...systemMessages, ...next] : next;
 
     try {
       const resp = await fetch(CHAT_URL, {
