@@ -1,9 +1,11 @@
 import { useState, useRef, useEffect } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { Send, Sparkles, Copy, Check, Bot, User } from "lucide-react";
+import { Send, Sparkles, Copy, Check, Bot, User, Laptop } from "lucide-react";
 import { toast } from "sonner";
 import LinkStudioButton, { loadStudioContext, type StudioContext } from "./LinkStudioButton";
+
+const LITE_KEY = "bloxie:studio-lite";
 
 type Msg = { role: "user" | "assistant"; content: string };
 
@@ -52,11 +54,24 @@ export default function ChatPanel() {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [studio, setStudio] = useState<StudioContext | null>(null);
+  const [liteMode, setLiteMode] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setStudio(loadStudioContext());
+    if (typeof window !== "undefined") {
+      setLiteMode(localStorage.getItem(LITE_KEY) === "1");
+    }
   }, []);
+
+  const toggleLite = () => {
+    setLiteMode((v) => {
+      const nv = !v;
+      try { localStorage.setItem(LITE_KEY, nv ? "1" : "0"); } catch {}
+      toast.success(nv ? "Studio Lite mode ON — browser-friendly scripts only 💻" : "Studio Lite mode OFF");
+      return nv;
+    });
+  };
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
@@ -75,20 +90,33 @@ export default function ChatPanel() {
 
     // Build payload — prepend studio context as a system note if linked
     const hasCtx = studio && (studio.placeUrl || studio.gameType || studio.notes || studio.snapshot);
-    const payloadMessages = hasCtx
-      ? [
-          {
-            role: "system" as const,
-            content: `The user has linked their Roblox game. Tailor every script to it and reference REAL instances from their game tree when relevant. The user is only suggesting changes — never claim you edited their game; always give them a script to paste.
+    const systemMessages: { role: "system"; content: string }[] = [];
+
+    if (liteMode) {
+      systemMessages.push({
+        role: "system",
+        content: `STUDIO LITE MODE — the user is editing in Roblox Studio Lite (browser-based, mobile/Chromebook friendly). Constraints:
+- Studio Lite has NO Command Bar, NO plugins, and NO Output window. Do NOT tell the user to "paste this into the Command Bar" or "install a plugin".
+- Only give scripts they can create as a Script / LocalScript / ModuleScript inside the Explorer (e.g. ServerScriptService, StarterPlayerScripts, StarterGui, ReplicatedStorage, inside a Tool/Part).
+- Always tell them step-by-step where to right-click → Insert Object → Script, and what to name it.
+- Avoid features that require desktop Studio (Terrain editor, advanced plugins, MeshPart importing from file). Suggest in-game/script alternatives instead.
+- Keep code short and self-contained when possible — Studio Lite users often work on small screens.`,
+      });
+    }
+
+    if (hasCtx) {
+      systemMessages.push({
+        role: "system",
+        content: `The user has linked their Roblox game. Tailor every script to it and reference REAL instances from their game tree when relevant. The user is only suggesting changes — never claim you edited their game; always give them a script to paste.
 ${studio!.placeUrl ? `- Place URL: ${studio!.placeUrl}` : ""}
 ${studio!.placeId ? `- Place ID: ${studio!.placeId}` : ""}
 ${studio!.gameType ? `- Game type: ${studio!.gameType}` : ""}
 ${studio!.notes ? `- Notes: ${studio!.notes}` : ""}
 ${studio!.snapshot ? `\n--- READ-ONLY GAME TREE SNAPSHOT (from scanner script) ---\n${studio!.snapshot}\n--- END SNAPSHOT ---\nUse exact names from this tree when writing scripts (e.g. game.Workspace.<RealName>, game.ReplicatedStorage.<RealFolder>). If the user asks about something not in the tree, mention they may need to add it first.` : ""}`,
-          },
-          ...next,
-        ]
-      : next;
+      });
+    }
+
+    const payloadMessages = systemMessages.length ? [...systemMessages, ...next] : next;
 
     try {
       const resp = await fetch(CHAT_URL, {
@@ -178,6 +206,20 @@ ${studio!.snapshot ? `\n--- READ-ONLY GAME TREE SNAPSHOT (from scanner script) -
           <p className="text-xs text-muted-foreground">Your Roblox Lua scripting buddy 🎮</p>
         </div>
         <div className="ml-auto flex items-center gap-2">
+          <button
+            type="button"
+            onClick={toggleLite}
+            title="Studio Lite mode — browser/Chromebook friendly scripts only"
+            className={`flex items-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-semibold transition ${
+              liteMode
+                ? "border-primary bg-primary/15 text-primary shadow-neon"
+                : "border-border bg-secondary/40 text-muted-foreground hover:text-primary hover:border-primary"
+            }`}
+          >
+            <Laptop className="h-4 w-4" />
+            <span className="hidden sm:inline">Studio Lite</span>
+            <span className={`h-2 w-2 rounded-full ${liteMode ? "bg-primary animate-pulse" : "bg-muted-foreground/40"}`} />
+          </button>
           <LinkStudioButton onChange={setStudio} />
           <div className="hidden items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1.5 text-xs font-medium text-primary sm:flex">
             <span className="h-2 w-2 rounded-full bg-primary animate-pulse" />
