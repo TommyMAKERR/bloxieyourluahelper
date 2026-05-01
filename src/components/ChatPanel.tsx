@@ -206,6 +206,20 @@ ${studio!.snapshot ? `\n--- READ-ONLY GAME TREE SNAPSHOT (from scanner script) -
           <p className="text-xs text-muted-foreground">Your Roblox Lua scripting buddy 🎮</p>
         </div>
         <div className="ml-auto flex items-center gap-2">
+          <button
+            type="button"
+            onClick={toggleLite}
+            title="Studio Lite mode — browser/Chromebook friendly scripts only"
+            className={`flex items-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-semibold transition ${
+              liteMode
+                ? "border-primary bg-primary/15 text-primary shadow-neon"
+                : "border-border bg-secondary/40 text-muted-foreground hover:text-primary hover:border-primary"
+            }`}
+          >
+            <Laptop className="h-4 w-4" />
+            <span className="hidden sm:inline">Studio Lite</span>
+            <span className={`h-2 w-2 rounded-full ${liteMode ? "bg-primary animate-pulse" : "bg-muted-foreground/40"}`} />
+          </button>
           <LinkStudioButton onChange={setStudio} />
           <div className="hidden items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1.5 text-xs font-medium text-primary sm:flex">
             <span className="h-2 w-2 rounded-full bg-primary animate-pulse" />
