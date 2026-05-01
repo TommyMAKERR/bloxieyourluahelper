@@ -92,17 +92,18 @@ export default function ChatPanel() {
     const hasCtx = studio && (studio.placeUrl || studio.gameType || studio.notes || studio.snapshot);
     const systemMessages: { role: "system"; content: string }[] = [];
 
-    if (liteMode) {
-      systemMessages.push({
-        role: "system",
-        content: `STUDIO LITE MODE — the user is editing in Roblox Studio Lite (browser-based, mobile/Chromebook friendly). Constraints:
+    systemMessages.push({
+      role: "system",
+      content: liteMode
+        ? `CURRENT MODE: STUDIO LITE = ON. The user is editing in Roblox Studio Lite (browser-based, mobile/Chromebook friendly). Constraints for THIS reply:
 - Studio Lite has NO Command Bar, NO plugins, and NO Output window. Do NOT tell the user to "paste this into the Command Bar" or "install a plugin".
 - Only give scripts they can create as a Script / LocalScript / ModuleScript inside the Explorer (e.g. ServerScriptService, StarterPlayerScripts, StarterGui, ReplicatedStorage, inside a Tool/Part).
 - Always tell them step-by-step where to right-click → Insert Object → Script, and what to name it.
 - Avoid features that require desktop Studio (Terrain editor, advanced plugins, MeshPart importing from file). Suggest in-game/script alternatives instead.
-- Keep code short and self-contained when possible — Studio Lite users often work on small screens.`,
-      });
-    }
+- Keep code short and self-contained when possible.`
+        : `CURRENT MODE: STUDIO LITE = OFF. The user is on the FULL desktop Roblox Studio. Ignore any earlier instructions in this conversation about Studio Lite limitations — the user now has the Command Bar, plugins, Output window, Terrain editor, and full Studio features available. You may suggest those when helpful.`,
+    });
+
 
     if (hasCtx) {
       systemMessages.push({
