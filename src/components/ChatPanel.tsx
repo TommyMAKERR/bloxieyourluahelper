@@ -54,11 +54,24 @@ export default function ChatPanel() {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [studio, setStudio] = useState<StudioContext | null>(null);
+  const [liteMode, setLiteMode] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setStudio(loadStudioContext());
+    if (typeof window !== "undefined") {
+      setLiteMode(localStorage.getItem(LITE_KEY) === "1");
+    }
   }, []);
+
+  const toggleLite = () => {
+    setLiteMode((v) => {
+      const nv = !v;
+      try { localStorage.setItem(LITE_KEY, nv ? "1" : "0"); } catch {}
+      toast.success(nv ? "Studio Lite mode ON — browser-friendly scripts only 💻" : "Studio Lite mode OFF");
+      return nv;
+    });
+  };
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
