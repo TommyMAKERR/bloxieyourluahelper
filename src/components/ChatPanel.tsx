@@ -1,13 +1,15 @@
 import { useState, useRef, useEffect } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { Send, Sparkles, Copy, Check, Bot, User, Laptop } from "lucide-react";
+import { Send, Sparkles, Copy, Check, Bot, User, Laptop, Image as ImageIcon, Mic, X, Hammer, Lightbulb } from "lucide-react";
 import { toast } from "sonner";
 import LinkStudioButton, { loadStudioContext, type StudioContext } from "./LinkStudioButton";
 
 const LITE_KEY = "bloxie:studio-lite";
+const MODE_KEY = "bloxie:mode";
 
-type Msg = { role: "user" | "assistant"; content: string };
+type Msg = { role: "user" | "assistant"; content: string; image?: string };
+type Mode = "build" | "plan";
 
 const STARTER_PROMPTS = [
   { icon: "🛡️", title: "Admin Panel", prompt: "Make me a full admin panel with kick, ban, teleport, fly, and give-tools commands. Use a UserId allowlist." },
@@ -55,12 +57,19 @@ export default function ChatPanel() {
   const [loading, setLoading] = useState(false);
   const [studio, setStudio] = useState<StudioContext | null>(null);
   const [liteMode, setLiteMode] = useState(false);
+  const [mode, setMode] = useState<Mode>("build");
+  const [pendingImage, setPendingImage] = useState<string | null>(null);
+  const [listening, setListening] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const recognitionRef = useRef<any>(null);
 
   useEffect(() => {
     setStudio(loadStudioContext());
     if (typeof window !== "undefined") {
       setLiteMode(localStorage.getItem(LITE_KEY) === "1");
+      const savedMode = localStorage.getItem(MODE_KEY);
+      if (savedMode === "plan" || savedMode === "build") setMode(savedMode);
     }
   }, []);
 
@@ -73,51 +82,122 @@ export default function ChatPanel() {
     });
   };
 
+  const switchMode = (m: Mode) => {
+    setMode(m);
+    try { localStorage.setItem(MODE_KEY, m); } catch {}
+    toast.success(m === "build" ? "Build mode — I'll write the script right away 🔨" : "Plan mode — I'll ask questions first 💡");
+  };
+
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages]);
 
-  const send = async (text: string) => {
-    if (!text.trim() || loading) return;
-    const userMsg: Msg = { role: "user", content: text };
+  const onPickImage = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Image too big — keep it under 5MB");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => setPendingImage(String(reader.result));
+    reader.readAsDataURL(file);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const toggleMic = () => {
+    const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SR) {
+      toast.error("Voice input isn't supported in this browser. Try Chrome!");
+      return;
+    }
+    if (listening) {
+      recognitionRef.current?.stop();
+      return;
+    }
+    const rec = new SR();
+    rec.lang = "en-US";
+    rec.interimResults = true;
+    rec.continuous = false;
+    let finalText = "";
+    rec.onresult = (ev: any) => {
+      let interim = "";
+      for (let i = ev.resultIndex; i < ev.results.length; i++) {
+        const t = ev.results[i][0].transcript;
+        if (ev.results[i].isFinal) finalText += t;
+        else interim += t;
+      }
+      setInput((prev) => (finalText || interim ? (finalText || interim) : prev));
+    };
+    rec.onerror = (e: any) => {
+      console.error("speech error", e);
+      toast.error("Mic error — check browser permissions");
+      setListening(false);
+    };
+    rec.onend = () => setListening(false);
+    recognitionRef.current = rec;
+    setListening(true);
+    rec.start();
+    toast.success("Listening… speak now 🎤");
+  };
+
+  const send = async (text: string, imageOverride?: string | null) => {
+    const image = imageOverride !== undefined ? imageOverride : pendingImage;
+    if ((!text.trim() && !image) || loading) return;
+    const userMsg: Msg = { role: "user", content: text || "(image attached)", image: image || undefined };
     const next = [...messages, userMsg];
     setMessages(next);
     setInput("");
+    setPendingImage(null);
     setLoading(true);
 
     const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/lua-chat`;
     let assistantSoFar = "";
 
-    // Build payload — prepend studio context as a system note if linked
     const hasCtx = studio && (studio.placeUrl || studio.gameType || studio.notes || studio.snapshot);
     const systemMessages: { role: "system"; content: string }[] = [];
 
     systemMessages.push({
       role: "system",
-      content: liteMode
-        ? `CURRENT MODE: STUDIO LITE = ON. The user is editing in Roblox Studio Lite (browser-based, mobile/Chromebook friendly). Constraints for THIS reply:
-- Studio Lite has NO Command Bar, NO plugins, and NO Output window. Do NOT tell the user to "paste this into the Command Bar" or "install a plugin".
-- Only give scripts they can create as a Script / LocalScript / ModuleScript inside the Explorer (e.g. ServerScriptService, StarterPlayerScripts, StarterGui, ReplicatedStorage, inside a Tool/Part).
-- Always tell them step-by-step where to right-click → Insert Object → Script, and what to name it.
-- Avoid features that require desktop Studio (Terrain editor, advanced plugins, MeshPart importing from file). Suggest in-game/script alternatives instead.
-- Keep code short and self-contained when possible.`
-        : `CURRENT MODE: STUDIO LITE = OFF. The user is on the FULL desktop Roblox Studio. Ignore any earlier instructions in this conversation about Studio Lite limitations — the user now has the Command Bar, plugins, Output window, Terrain editor, and full Studio features available. You may suggest those when helpful.`,
+      content: mode === "plan"
+        ? `CURRENT MODE: PLAN. Do NOT write a full script yet. Instead, briefly confirm the goal in 1 sentence, then ask 2-4 short clarifying questions (bullet list) about what the user actually wants — features, edge cases, where it goes, who it's for. Only after the user answers should you write code on the next turn. Keep it friendly and short.`
+        : `CURRENT MODE: BUILD. Write the working script(s) right away with full implementation, locations, and step-by-step instructions. Don't stall with extra questions unless something is truly blocking.`,
     });
 
+    systemMessages.push({
+      role: "system",
+      content: liteMode
+        ? `STUDIO LITE = ON. Browser-based Studio: NO Command Bar, NO plugins, NO Output. Only Explorer-based steps (right-click → Insert → Script/LocalScript/ModuleScript) inside ServerScriptService, StarterPlayerScripts, StarterGui, ReplicatedStorage, Tools, or Parts. Avoid Terrain editor, plugins, MeshPart file imports.`
+        : `STUDIO LITE = OFF. Full desktop Studio available — Command Bar, plugins, Output, Terrain editor are all fine to suggest.`,
+    });
 
     if (hasCtx) {
       systemMessages.push({
         role: "system",
-        content: `The user has linked their Roblox game. Tailor every script to it and reference REAL instances from their game tree when relevant. The user is only suggesting changes — never claim you edited their game; always give them a script to paste.
+        content: `The user has linked their Roblox game. Tailor scripts to it and reference REAL instances from the game tree.
 ${studio!.placeUrl ? `- Place URL: ${studio!.placeUrl}` : ""}
 ${studio!.placeId ? `- Place ID: ${studio!.placeId}` : ""}
 ${studio!.gameType ? `- Game type: ${studio!.gameType}` : ""}
 ${studio!.notes ? `- Notes: ${studio!.notes}` : ""}
-${studio!.snapshot ? `\n--- READ-ONLY GAME TREE SNAPSHOT (from scanner script) ---\n${studio!.snapshot}\n--- END SNAPSHOT ---\nUse exact names from this tree when writing scripts (e.g. game.Workspace.<RealName>, game.ReplicatedStorage.<RealFolder>). If the user asks about something not in the tree, mention they may need to add it first.` : ""}`,
+${studio!.snapshot ? `\n--- GAME TREE SNAPSHOT ---\n${studio!.snapshot}\n--- END ---` : ""}`,
       });
     }
 
-    const payloadMessages = systemMessages.length ? [...systemMessages, ...next] : next;
+    // Build user message — multimodal if image attached
+    const apiUserMessages = next.map((m) => {
+      if (m.role === "user" && m.image) {
+        return {
+          role: "user",
+          content: [
+            { type: "text", text: m.content },
+            { type: "image_url", image_url: { url: m.image } },
+          ],
+        };
+      }
+      return { role: m.role, content: m.content };
+    });
+
+    const payloadMessages = [...systemMessages, ...apiUserMessages];
 
     try {
       const resp = await fetch(CHAT_URL, {
@@ -129,21 +209,9 @@ ${studio!.snapshot ? `\n--- READ-ONLY GAME TREE SNAPSHOT (from scanner script) -
         body: JSON.stringify({ messages: payloadMessages }),
       });
 
-      if (resp.status === 429) {
-        toast.error("Slow down! Too many requests — try again in a sec.");
-        setLoading(false);
-        return;
-      }
-      if (resp.status === 402) {
-        toast.error("AI credits ran out. Add funds in workspace usage.");
-        setLoading(false);
-        return;
-      }
-      if (!resp.ok || !resp.body) {
-        toast.error("Bloxie hiccupped. Try again!");
-        setLoading(false);
-        return;
-      }
+      if (resp.status === 429) { toast.error("Slow down! Try again in a sec."); setLoading(false); return; }
+      if (resp.status === 402) { toast.error("AI credits ran out. Add funds in workspace usage."); setLoading(false); return; }
+      if (!resp.ok || !resp.body) { toast.error("Bloxie hiccupped. Try again!"); setLoading(false); return; }
 
       const reader = resp.body.getReader();
       const decoder = new TextDecoder();
@@ -174,10 +242,7 @@ ${studio!.snapshot ? `\n--- READ-ONLY GAME TREE SNAPSHOT (from scanner script) -
           if (!line || line.startsWith(":")) continue;
           if (!line.startsWith("data: ")) continue;
           const json = line.slice(6).trim();
-          if (json === "[DONE]") {
-            streamDone = true;
-            break;
-          }
+          if (json === "[DONE]") { streamDone = true; break; }
           try {
             const parsed = JSON.parse(json);
             const c = parsed.choices?.[0]?.delta?.content as string | undefined;
@@ -206,7 +271,32 @@ ${studio!.snapshot ? `\n--- READ-ONLY GAME TREE SNAPSHOT (from scanner script) -
           <h2 className="text-xl font-bold">Bloxie</h2>
           <p className="text-xs text-muted-foreground">Your Roblox Lua scripting buddy 🎮</p>
         </div>
-        <div className="ml-auto flex items-center gap-2">
+        <div className="ml-auto flex flex-wrap items-center gap-2">
+          {/* Build / Plan toggle */}
+          <div className="flex rounded-xl border border-border bg-secondary/40 p-0.5">
+            <button
+              type="button"
+              onClick={() => switchMode("build")}
+              title="Build mode — write the script right away"
+              className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold transition ${
+                mode === "build" ? "bg-primary text-primary-foreground shadow-neon" : "text-muted-foreground hover:text-primary"
+              }`}
+            >
+              <Hammer className="h-3.5 w-3.5" />
+              Build
+            </button>
+            <button
+              type="button"
+              onClick={() => switchMode("plan")}
+              title="Plan mode — ask clarifying questions first"
+              className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold transition ${
+                mode === "plan" ? "bg-primary text-primary-foreground shadow-neon" : "text-muted-foreground hover:text-primary"
+              }`}
+            >
+              <Lightbulb className="h-3.5 w-3.5" />
+              Plan
+            </button>
+          </div>
           <button
             type="button"
             onClick={toggleLite}
@@ -222,10 +312,6 @@ ${studio!.snapshot ? `\n--- READ-ONLY GAME TREE SNAPSHOT (from scanner script) -
             <span className={`h-2 w-2 rounded-full ${liteMode ? "bg-primary animate-pulse" : "bg-muted-foreground/40"}`} />
           </button>
           <LinkStudioButton onChange={setStudio} />
-          <div className="hidden items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1.5 text-xs font-medium text-primary sm:flex">
-            <span className="h-2 w-2 rounded-full bg-primary animate-pulse" />
-            Online
-          </div>
         </div>
       </div>
 
@@ -237,7 +323,7 @@ ${studio!.snapshot ? `\n--- READ-ONLY GAME TREE SNAPSHOT (from scanner script) -
             </div>
             <div>
               <h3 className="text-2xl font-bold">What are we building today?</h3>
-              <p className="mt-1 text-sm text-muted-foreground">Pick a starter or describe your idea — I'll write the Lua.</p>
+              <p className="mt-1 text-sm text-muted-foreground">Pick a starter, attach a screenshot, or describe your idea.</p>
             </div>
             <div className="grid w-full max-w-2xl grid-cols-1 gap-3 sm:grid-cols-2">
               {STARTER_PROMPTS.map((p) => (
@@ -273,6 +359,9 @@ ${studio!.snapshot ? `\n--- READ-ONLY GAME TREE SNAPSHOT (from scanner script) -
                       : "bg-secondary/60 text-foreground"
                   }`}
                 >
+                  {m.image && (
+                    <img src={m.image} alt="attachment" className="mb-2 max-h-64 rounded-lg border border-border" />
+                  )}
                   <div className="prose prose-invert prose-sm max-w-none prose-p:my-2 prose-headings:text-primary prose-strong:text-primary prose-code:text-accent prose-code:before:content-none prose-code:after:content-none">
                     <ReactMarkdown
                       remarkPlugins={[remarkGfm]}
@@ -311,6 +400,20 @@ ${studio!.snapshot ? `\n--- READ-ONLY GAME TREE SNAPSHOT (from scanner script) -
         )}
       </div>
 
+      {pendingImage && (
+        <div className="flex items-center gap-3 rounded-xl border border-border bg-secondary/40 p-2">
+          <img src={pendingImage} alt="preview" className="h-14 w-14 rounded-lg object-cover" />
+          <span className="text-xs text-muted-foreground flex-1">Image attached — send to ask Bloxie about it</span>
+          <button
+            type="button"
+            onClick={() => setPendingImage(null)}
+            className="rounded-lg p-1.5 text-muted-foreground hover:bg-secondary hover:text-primary"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      )}
+
       <form
         onSubmit={(e) => {
           e.preventDefault();
@@ -319,15 +422,40 @@ ${studio!.snapshot ? `\n--- READ-ONLY GAME TREE SNAPSHOT (from scanner script) -
         className="flex gap-2 rounded-2xl border border-border bg-secondary/40 p-2 focus-within:border-primary focus-within:shadow-neon transition"
       >
         <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={onPickImage}
+        />
+        <button
+          type="button"
+          onClick={() => fileInputRef.current?.click()}
+          title="Attach an image (screenshot of your game, error, GUI mockup…)"
+          className="flex items-center justify-center rounded-xl px-2.5 text-muted-foreground transition hover:bg-secondary hover:text-primary"
+        >
+          <ImageIcon className="h-4 w-4" />
+        </button>
+        <button
+          type="button"
+          onClick={toggleMic}
+          title="Speak instead of typing"
+          className={`flex items-center justify-center rounded-xl px-2.5 transition ${
+            listening ? "bg-primary text-primary-foreground animate-pulse" : "text-muted-foreground hover:bg-secondary hover:text-primary"
+          }`}
+        >
+          <Mic className="h-4 w-4" />
+        </button>
+        <input
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder="Ask for any Roblox script... e.g. 'speed gamepass'"
+          placeholder={mode === "plan" ? "Describe your idea — I'll ask questions first…" : "Ask for any Roblox script…"}
           className="flex-1 bg-transparent px-3 py-2 text-sm outline-none placeholder:text-muted-foreground"
           disabled={loading}
         />
         <button
           type="submit"
-          disabled={loading || !input.trim()}
+          disabled={loading || (!input.trim() && !pendingImage)}
           className="flex items-center gap-2 rounded-xl gradient-hero px-4 py-2 font-semibold text-primary-foreground transition hover:opacity-90 disabled:opacity-40"
         >
           <Send className="h-4 w-4" />
