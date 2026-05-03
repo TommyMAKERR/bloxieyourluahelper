@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import ChatPanel from "@/components/ChatPanel";
+import AuthButton from "@/components/AuthButton";
 import { Sparkles, Zap, Code2, Gamepad2 } from "lucide-react";
 import { Toaster } from "sonner";
 
@@ -38,10 +39,13 @@ function Index() {
               </p>
             </div>
           </div>
-          <div className="hidden items-center gap-4 md:flex">
-            <Feature icon={<Zap className="h-4 w-4" />} text="Instant scripts" />
-            <Feature icon={<Code2 className="h-4 w-4" />} text="Copy-paste ready" />
-            <Feature icon={<Sparkles className="h-4 w-4" />} text="Beginner friendly" />
+          <div className="flex items-center gap-3">
+            <div className="hidden items-center gap-4 md:flex">
+              <Feature icon={<Zap className="h-4 w-4" />} text="Instant scripts" />
+              <Feature icon={<Code2 className="h-4 w-4" />} text="Copy-paste ready" />
+              <Feature icon={<Sparkles className="h-4 w-4" />} text="Beginner friendly" />
+            </div>
+            <AuthButton />
           </div>
         </header>
 
