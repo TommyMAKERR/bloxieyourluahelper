@@ -4,6 +4,8 @@ import remarkGfm from "remark-gfm";
 import { Send, Sparkles, Copy, Check, Bot, User, Laptop, Image as ImageIcon, Mic, X, Hammer, Lightbulb } from "lucide-react";
 import { toast } from "sonner";
 import LinkStudioButton, { loadStudioContext, type StudioContext } from "./LinkStudioButton";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
 
 const LITE_KEY = "bloxie:studio-lite";
 const MODE_KEY = "bloxie:mode";
@@ -60,6 +62,8 @@ export default function ChatPanel() {
   const [mode, setMode] = useState<Mode>("build");
   const [pendingImage, setPendingImage] = useState<string | null>(null);
   const [listening, setListening] = useState(false);
+  const [nickname, setNickname] = useState<string | null>(null);
+  const { user } = useAuth();
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const recognitionRef = useRef<any>(null);
@@ -72,6 +76,23 @@ export default function ChatPanel() {
       if (savedMode === "plan" || savedMode === "build") setMode(savedMode);
     }
   }, []);
+
+  useEffect(() => {
+    if (!user) { setNickname(null); return; }
+    supabase
+      .from("profiles")
+      .select("display_name")
+      .eq("id", user.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        const fallback =
+          (user.user_metadata?.full_name as string) ||
+          (user.user_metadata?.name as string) ||
+          user.email?.split("@")[0] ||
+          null;
+        setNickname(data?.display_name || fallback);
+      });
+  }, [user]);
 
   const toggleLite = () => {
     setLiteMode((v) => {
@@ -156,6 +177,14 @@ export default function ChatPanel() {
 
     const hasCtx = studio && (studio.placeUrl || studio.gameType || studio.notes || studio.snapshot);
     const systemMessages: { role: "system"; content: string }[] = [];
+
+    if (nickname) {
+      systemMessages.push({
+        role: "system",
+        content: `The user's chosen nickname is "${nickname}". ALWAYS address them as "${nickname}" in your replies (e.g. greetings, mentions). Never call them anything else, never use their email, and never make up a different name.`,
+      });
+    }
+
 
     systemMessages.push({
       role: "system",
