@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import ChatPanel from "@/components/ChatPanel";
+import AuthButton from "@/components/AuthButton";
 import { Sparkles, Zap, Code2, Gamepad2 } from "lucide-react";
 import { Toaster } from "sonner";
 
