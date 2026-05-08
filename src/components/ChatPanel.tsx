@@ -98,6 +98,66 @@ export default function ChatPanel() {
       });
   }, [user]);
 
+  const newChat = () => {
+    setConversationId(null);
+    setMessages([]);
+    setPendingImage(null);
+    setInput("");
+  };
+
+  const selectConversation = async (id: string) => {
+    setConversationId(id);
+    const { data, error } = await supabase
+      .from("messages")
+      .select("role,content,image_url")
+      .eq("conversation_id", id)
+      .order("created_at", { ascending: true });
+    if (error) { toast.error("Couldn't load chat"); return; }
+    setMessages(
+      (data || []).map((r: any) => ({
+        role: r.role as "user" | "assistant",
+        content: r.content as string,
+        image: r.image_url || undefined,
+      }))
+    );
+  };
+
+  const persistMessage = async (
+    convId: string,
+    role: "user" | "assistant",
+    content: string,
+    image?: string | null
+  ) => {
+    if (!user) return;
+    await supabase.from("messages").insert({
+      conversation_id: convId,
+      user_id: user.id,
+      role,
+      content,
+      image_url: image || null,
+    });
+    await supabase
+      .from("conversations")
+      .update({ updated_at: new Date().toISOString() })
+      .eq("id", convId);
+  };
+
+  const ensureConversation = async (firstUserText: string): Promise<string | null> => {
+    if (!user) return null;
+    if (conversationId) return conversationId;
+    const title = (firstUserText.trim().slice(0, 60) || "New chat");
+    const { data, error } = await supabase
+      .from("conversations")
+      .insert({ user_id: user.id, title })
+      .select("id")
+      .single();
+    if (error || !data) { console.error(error); return null; }
+    setConversationId(data.id);
+    setSidebarRefresh((k) => k + 1);
+    return data.id;
+  };
+
+
   const toggleLite = () => {
     setLiteMode((v) => {
       const nv = !v;
