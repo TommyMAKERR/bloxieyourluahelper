@@ -1,11 +1,12 @@
 import { useState, useRef, useEffect } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { Send, Sparkles, Copy, Check, Bot, User, Laptop, Image as ImageIcon, Mic, X, Hammer, Lightbulb } from "lucide-react";
+import { Send, Sparkles, Copy, Check, Bot, User, Laptop, Image as ImageIcon, Mic, X, Hammer, Lightbulb, Menu } from "lucide-react";
 import { toast } from "sonner";
 import LinkStudioButton, { loadStudioContext, type StudioContext } from "./LinkStudioButton";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
+import ConversationSidebar from "./ConversationSidebar";
 
 const LITE_KEY = "bloxie:studio-lite";
 const MODE_KEY = "bloxie:mode";
@@ -63,6 +64,9 @@ export default function ChatPanel() {
   const [pendingImage, setPendingImage] = useState<string | null>(null);
   const [listening, setListening] = useState(false);
   const [nickname, setNickname] = useState<string | null>(null);
+  const [conversationId, setConversationId] = useState<string | null>(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarRefresh, setSidebarRefresh] = useState(0);
   const { user } = useAuth();
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -93,6 +97,66 @@ export default function ChatPanel() {
         setNickname(data?.display_name || fallback);
       });
   }, [user]);
+
+  const newChat = () => {
+    setConversationId(null);
+    setMessages([]);
+    setPendingImage(null);
+    setInput("");
+  };
+
+  const selectConversation = async (id: string) => {
+    setConversationId(id);
+    const { data, error } = await supabase
+      .from("messages")
+      .select("role,content,image_url")
+      .eq("conversation_id", id)
+      .order("created_at", { ascending: true });
+    if (error) { toast.error("Couldn't load chat"); return; }
+    setMessages(
+      (data || []).map((r: any) => ({
+        role: r.role as "user" | "assistant",
+        content: r.content as string,
+        image: r.image_url || undefined,
+      }))
+    );
+  };
+
+  const persistMessage = async (
+    convId: string,
+    role: "user" | "assistant",
+    content: string,
+    image?: string | null
+  ) => {
+    if (!user) return;
+    await supabase.from("messages").insert({
+      conversation_id: convId,
+      user_id: user.id,
+      role,
+      content,
+      image_url: image || null,
+    });
+    await supabase
+      .from("conversations")
+      .update({ updated_at: new Date().toISOString() })
+      .eq("id", convId);
+  };
+
+  const ensureConversation = async (firstUserText: string): Promise<string | null> => {
+    if (!user) return null;
+    if (conversationId) return conversationId;
+    const title = (firstUserText.trim().slice(0, 60) || "New chat");
+    const { data, error } = await supabase
+      .from("conversations")
+      .insert({ user_id: user.id, title })
+      .select("id")
+      .single();
+    if (error || !data) { console.error(error); return null; }
+    setConversationId(data.id);
+    setSidebarRefresh((k) => k + 1);
+    return data.id;
+  };
+
 
   const toggleLite = () => {
     setLiteMode((v) => {
@@ -171,6 +235,12 @@ export default function ChatPanel() {
     setInput("");
     setPendingImage(null);
     setLoading(true);
+
+    // Persist user message (creates conversation on first send)
+    const convId = await ensureConversation(text || "Image chat");
+    if (convId) {
+      await persistMessage(convId, "user", userMsg.content, userMsg.image);
+    }
 
     const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/lua-chat`;
     let assistantSoFar = "";
@@ -287,12 +357,35 @@ ${studio!.snapshot ? `\n--- GAME TREE SNAPSHOT ---\n${studio!.snapshot}\n--- END
       toast.error("Network error. Try again!");
     } finally {
       setLoading(false);
+      if (convId && assistantSoFar) {
+        await persistMessage(convId, "assistant", assistantSoFar);
+        setSidebarRefresh((k) => k + 1);
+      }
     }
   };
 
   return (
-    <div className="flex h-[calc(100vh-2rem)] flex-col gap-4 rounded-3xl border border-border bg-card/60 p-4 backdrop-blur-sm shadow-card md:p-6">
+    <div className="flex h-[calc(100vh-2rem)] gap-0 rounded-3xl border border-border bg-card/60 backdrop-blur-sm shadow-card overflow-hidden">
+      <ConversationSidebar
+        open={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+        currentId={conversationId}
+        onSelect={selectConversation}
+        onNew={newChat}
+        refreshKey={sidebarRefresh}
+      />
+      <div className="flex flex-1 flex-col gap-4 p-4 md:p-6 min-w-0">
       <div className="flex flex-wrap items-center gap-3 border-b border-border pb-4">
+        {user && (
+          <button
+            type="button"
+            onClick={() => setSidebarOpen((v) => !v)}
+            title="Your chats"
+            className="flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-secondary/40 text-muted-foreground transition hover:border-primary hover:text-primary"
+          >
+            <Menu className="h-4 w-4" />
+          </button>
+        )}
         <div className="flex h-11 w-11 items-center justify-center rounded-2xl gradient-hero shadow-neon">
           <Bot className="h-6 w-6 text-primary-foreground" />
         </div>
@@ -491,6 +584,7 @@ ${studio!.snapshot ? `\n--- GAME TREE SNAPSHOT ---\n${studio!.snapshot}\n--- END
           <span className="hidden sm:inline">Send</span>
         </button>
       </form>
+      </div>
     </div>
   );
 }
