@@ -584,6 +584,7 @@ ${studio!.snapshot ? `\n--- GAME TREE SNAPSHOT ---\n${studio!.snapshot}\n--- END
           <span className="hidden sm:inline">Send</span>
         </button>
       </form>
+      </div>
     </div>
   );
 }
