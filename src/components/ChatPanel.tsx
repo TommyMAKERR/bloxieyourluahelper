@@ -236,6 +236,12 @@ export default function ChatPanel() {
     setPendingImage(null);
     setLoading(true);
 
+    // Persist user message (creates conversation on first send)
+    const convId = await ensureConversation(text || "Image chat");
+    if (convId) {
+      await persistMessage(convId, "user", userMsg.content, userMsg.image);
+    }
+
     const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/lua-chat`;
     let assistantSoFar = "";
 
