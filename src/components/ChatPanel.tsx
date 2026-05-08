@@ -64,6 +64,9 @@ export default function ChatPanel() {
   const [pendingImage, setPendingImage] = useState<string | null>(null);
   const [listening, setListening] = useState(false);
   const [nickname, setNickname] = useState<string | null>(null);
+  const [conversationId, setConversationId] = useState<string | null>(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarRefresh, setSidebarRefresh] = useState(0);
   const { user } = useAuth();
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
