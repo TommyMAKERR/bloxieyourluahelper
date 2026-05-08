@@ -97,8 +97,7 @@ export default function ConversationSidebar({ open, onClose, currentId, onSelect
               ))}
             </ul>
           </div>
-        </div>
-      </aside>
-    </>
+      </div>
+    </aside>
   );
 }
