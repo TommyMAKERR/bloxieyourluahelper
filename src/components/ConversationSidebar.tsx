@@ -53,31 +53,12 @@ export default function ConversationSidebar({ open, onClose, currentId, onSelect
   if (!user) return null;
 
   return (
-    <>
-      {open && (
-        <div
-          onClick={onClose}
-          className="fixed inset-0 z-40 bg-background/60 backdrop-blur-sm md:hidden"
-        />
-      )}
-      <aside
-        className={`fixed md:static inset-y-0 left-0 z-50 w-72 shrink-0 transform overflow-hidden border-r border-border bg-card/95 md:bg-card/40 backdrop-blur-sm transition-transform duration-200 md:translate-x-0 md:rounded-l-3xl ${
-          open ? "translate-x-0" : "-translate-x-full"
-        }`}
-      >
-        <div className="flex h-full flex-col">
-          <div className="flex items-center justify-between gap-2 border-b border-border p-3">
-            <div className="flex items-center gap-2">
-              <History className="h-4 w-4 text-primary" />
-              <span className="text-sm font-bold">Your chats</span>
-            </div>
-            <button
-              onClick={onClose}
-              className="rounded-lg p-1.5 text-muted-foreground hover:bg-secondary hover:text-primary md:hidden"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          </div>
+    <aside className="flex h-full w-56 sm:w-64 md:w-72 shrink-0 flex-col overflow-hidden border-r border-border bg-card/40 backdrop-blur-sm">
+      <div className="flex h-full flex-col">
+        <div className="flex items-center gap-2 border-b border-border p-3">
+          <History className="h-4 w-4 text-primary" />
+          <span className="text-sm font-bold">Your chats</span>
+        </div>
           <div className="p-2">
             <button
               onClick={() => { onNew(); onClose(); }}
@@ -116,8 +97,7 @@ export default function ConversationSidebar({ open, onClose, currentId, onSelect
               ))}
             </ul>
           </div>
-        </div>
-      </aside>
-    </>
+      </div>
+    </aside>
   );
 }
