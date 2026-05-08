@@ -63,7 +63,7 @@ export default function ConversationSidebar({ open, onClose, currentId, onSelect
       <aside
         className={`fixed md:static inset-y-0 left-0 z-50 w-72 shrink-0 transform overflow-hidden border-r border-border bg-card/95 md:bg-card/40 backdrop-blur-sm transition-transform duration-200 md:translate-x-0 md:rounded-l-3xl ${
           open ? "translate-x-0" : "-translate-x-full"
-        } md:block ${!open ? "md:!hidden" : ""}`}
+        }`}
       >
         <div className="flex h-full flex-col">
           <div className="flex items-center justify-between gap-2 border-b border-border p-3">
