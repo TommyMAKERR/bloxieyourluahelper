@@ -376,16 +376,6 @@ ${studio!.snapshot ? `\n--- GAME TREE SNAPSHOT ---\n${studio!.snapshot}\n--- END
       />
       <div className="flex flex-1 flex-col gap-4 p-4 md:p-6 min-w-0">
       <div className="flex flex-wrap items-center gap-3 border-b border-border pb-4">
-        {user && (
-          <button
-            type="button"
-            onClick={() => setSidebarOpen((v) => !v)}
-            title="Your chats"
-            className="md:hidden flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-secondary/40 text-muted-foreground transition hover:border-primary hover:text-primary"
-          >
-            <Menu className="h-4 w-4" />
-          </button>
-        )}
         <div className="flex h-11 w-11 items-center justify-center rounded-2xl gradient-hero shadow-neon">
           <Bot className="h-6 w-6 text-primary-foreground" />
         </div>
