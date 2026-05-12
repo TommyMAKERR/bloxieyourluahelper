@@ -172,7 +172,52 @@ export default function ChatPanel() {
   const switchMode = (m: Mode) => {
     setMode(m);
     try { localStorage.setItem(MODE_KEY, m); } catch {}
-    toast.success(m === "build" ? "Build mode — I'll write the script right away 🔨" : "Plan mode — I'll ask questions first 💡");
+    const labels: Record<Mode, string> = {
+      build: "Build mode — I'll write the script right away 🔨",
+      plan: "Plan mode — I'll ask questions first 💡",
+      chat: "Chat mode — normal AI, ask me anything 💬",
+    };
+    toast.success(labels[m]);
+  };
+
+  const stopGeneration = () => {
+    abortRef.current?.abort();
+    abortRef.current = null;
+  };
+
+  const exportChat = () => {
+    if (messages.length === 0) { toast.error("Nothing to export yet"); return; }
+    const text = messages
+      .map((m) => `### ${m.role === "user" ? "You" : "Bloxie"}\n\n${m.content}\n`)
+      .join("\n---\n\n");
+    const blob = new Blob([text], { type: "text/markdown;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `bloxie-chat-${Date.now()}.md`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success("Chat exported!");
+  };
+
+  const clearChat = () => {
+    if (messages.length === 0) return;
+    if (!confirm("Clear this chat? This won't delete saved chats in the sidebar.")) return;
+    setMessages([]);
+    setPendingImage(null);
+    setInput("");
+  };
+
+  const regenerate = () => {
+    // Find last user message, drop any assistant reply after it, resend
+    const lastUserIdx = [...messages].reverse().findIndex((m) => m.role === "user");
+    if (lastUserIdx === -1) return;
+    const idx = messages.length - 1 - lastUserIdx;
+    const lastUser = messages[idx];
+    const trimmed = messages.slice(0, idx);
+    setMessages(trimmed);
+    // small delay to let state apply
+    setTimeout(() => send(lastUser.content, lastUser.image ?? null), 0);
   };
 
   useEffect(() => {
