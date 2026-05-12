@@ -50,8 +50,6 @@ export default function ConversationSidebar({ open, onClose, currentId, onSelect
     toast.success("Chat deleted");
   };
 
-  if (!user) return null;
-
   return (
     <aside className="flex h-full w-56 sm:w-64 md:w-72 shrink-0 flex-col overflow-hidden border-r border-border bg-card/40 backdrop-blur-sm">
       <div className="flex h-full flex-col">
@@ -69,8 +67,13 @@ export default function ConversationSidebar({ open, onClose, currentId, onSelect
             </button>
           </div>
           <div className="flex-1 overflow-y-auto px-2 pb-3">
-            {loading && <p className="px-2 py-4 text-xs text-muted-foreground">Loading…</p>}
-            {!loading && convs.length === 0 && (
+            {!user && (
+              <p className="px-2 py-4 text-xs text-muted-foreground">
+                Sign in to save your chats and see them here. You can still chat without logging in!
+              </p>
+            )}
+            {user && loading && <p className="px-2 py-4 text-xs text-muted-foreground">Loading…</p>}
+            {user && !loading && convs.length === 0 && (
               <p className="px-2 py-4 text-xs text-muted-foreground">No chats yet. Send a message to start one!</p>
             )}
             <ul className="space-y-1">
