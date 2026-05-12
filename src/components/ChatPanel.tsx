@@ -440,7 +440,7 @@ ${studio!.snapshot ? `\n--- GAME TREE SNAPSHOT ---\n${studio!.snapshot}\n--- END
           <p className="text-xs text-muted-foreground">Your Roblox Lua scripting buddy 🎮</p>
         </div>
         <div className="ml-auto flex flex-wrap items-center gap-2">
-          {/* Build / Plan toggle */}
+          {/* Build / Plan / Chat toggle */}
           <div className="flex rounded-xl border border-border bg-secondary/40 p-0.5">
             <button
               type="button"
@@ -464,7 +464,34 @@ ${studio!.snapshot ? `\n--- GAME TREE SNAPSHOT ---\n${studio!.snapshot}\n--- END
               <Lightbulb className="h-3.5 w-3.5" />
               Plan
             </button>
+            <button
+              type="button"
+              onClick={() => switchMode("chat")}
+              title="Chat mode — normal AI, ask me anything"
+              className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold transition ${
+                mode === "chat" ? "bg-primary text-primary-foreground shadow-neon" : "text-muted-foreground hover:text-primary"
+              }`}
+            >
+              <MessageCircle className="h-3.5 w-3.5" />
+              Chat
+            </button>
           </div>
+          <button
+            type="button"
+            onClick={exportChat}
+            title="Export this chat as a file"
+            className="flex items-center justify-center rounded-xl border border-border bg-secondary/40 p-2 text-muted-foreground transition hover:text-primary hover:border-primary"
+          >
+            <Download className="h-4 w-4" />
+          </button>
+          <button
+            type="button"
+            onClick={clearChat}
+            title="Clear current chat"
+            className="flex items-center justify-center rounded-xl border border-border bg-secondary/40 p-2 text-muted-foreground transition hover:text-destructive hover:border-destructive"
+          >
+            <Eraser className="h-4 w-4" />
+          </button>
           <button
             type="button"
             onClick={toggleLite}
