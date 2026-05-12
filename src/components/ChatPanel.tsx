@@ -303,12 +303,12 @@ export default function ChatPanel() {
     }
 
 
-    systemMessages.push({
-      role: "system",
-      content: mode === "plan"
-        ? `CURRENT MODE: PLAN. Do NOT write a full script yet. Instead, briefly confirm the goal in 1 sentence, then ask 2-4 short clarifying questions (bullet list) about what the user actually wants — features, edge cases, where it goes, who it's for. Only after the user answers should you write code on the next turn. Keep it friendly and short.`
-        : `CURRENT MODE: BUILD. Write the working script(s) right away with full implementation, locations, and step-by-step instructions. Don't stall with extra questions unless something is truly blocking.`,
-    });
+    const modePrompts: Record<Mode, string> = {
+      plan: `CURRENT MODE: PLAN. Do NOT write a full script yet. Briefly confirm the goal in 1 sentence, then ask 2-4 short clarifying questions (bullet list). Only after the user answers should you write code on the next turn. Keep it friendly and short.`,
+      build: `CURRENT MODE: BUILD. Write the working script(s) right away with full implementation, locations, and step-by-step instructions. Don't stall with extra questions unless something is truly blocking.`,
+      chat: `CURRENT MODE: CHAT. Act as a normal, friendly general-purpose AI assistant — like ChatGPT. You can help with ANY topic (homework, ideas, writing, math, life advice, jokes, coding in any language, etc.), not just Roblox. Only mention Roblox/Lua if the user actually asks about it. Be conversational and helpful.`,
+    };
+    systemMessages.push({ role: "system", content: modePrompts[mode] });
 
     systemMessages.push({
       role: "system",
