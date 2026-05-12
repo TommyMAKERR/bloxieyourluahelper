@@ -593,6 +593,18 @@ ${studio!.snapshot ? `\n--- GAME TREE SNAPSHOT ---\n${studio!.snapshot}\n--- END
             )}
           </div>
         )}
+        {!loading && messages.length > 0 && messages[messages.length - 1]?.role === "assistant" && (
+          <div className="mt-3 flex justify-center">
+            <button
+              type="button"
+              onClick={regenerate}
+              className="flex items-center gap-1.5 rounded-xl border border-border bg-secondary/40 px-3 py-1.5 text-xs font-semibold text-muted-foreground transition hover:text-primary hover:border-primary"
+            >
+              <RotateCcw className="h-3.5 w-3.5" />
+              Regenerate
+            </button>
+          </div>
+        )}
       </div>
 
       {pendingImage && (
