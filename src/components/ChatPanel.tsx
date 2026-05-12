@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { Send, Sparkles, Copy, Check, Bot, User, Laptop, Image as ImageIcon, Mic, X, Hammer, Lightbulb, Menu } from "lucide-react";
+import { Send, Sparkles, Copy, Check, Bot, User, Laptop, Image as ImageIcon, Mic, X, Hammer, Lightbulb, MessageCircle, Square, RotateCcw, Download, Eraser } from "lucide-react";
 import { toast } from "sonner";
 import LinkStudioButton, { loadStudioContext, type StudioContext } from "./LinkStudioButton";
 import { useAuth } from "@/hooks/useAuth";
@@ -12,7 +12,7 @@ const LITE_KEY = "bloxie:studio-lite";
 const MODE_KEY = "bloxie:mode";
 
 type Msg = { role: "user" | "assistant"; content: string; image?: string };
-type Mode = "build" | "plan";
+type Mode = "build" | "plan" | "chat";
 
 const STARTER_PROMPTS = [
   { icon: "🛡️", title: "Admin Panel", prompt: "Make me a full admin panel with kick, ban, teleport, fly, and give-tools commands. Use a UserId allowlist." },
