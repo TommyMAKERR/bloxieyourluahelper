@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { Send, Sparkles, Copy, Check, Bot, User, Laptop, Image as ImageIcon, Mic, X, Hammer, Lightbulb, Menu } from "lucide-react";
+import { Send, Sparkles, Copy, Check, Bot, User, Laptop, Image as ImageIcon, Mic, X, Hammer, Lightbulb, MessageCircle, Square, RotateCcw, Download, Eraser } from "lucide-react";
 import { toast } from "sonner";
 import LinkStudioButton, { loadStudioContext, type StudioContext } from "./LinkStudioButton";
 import { useAuth } from "@/hooks/useAuth";
@@ -12,7 +12,7 @@ const LITE_KEY = "bloxie:studio-lite";
 const MODE_KEY = "bloxie:mode";
 
 type Msg = { role: "user" | "assistant"; content: string; image?: string };
-type Mode = "build" | "plan";
+type Mode = "build" | "plan" | "chat";
 
 const STARTER_PROMPTS = [
   { icon: "🛡️", title: "Admin Panel", prompt: "Make me a full admin panel with kick, ban, teleport, fly, and give-tools commands. Use a UserId allowlist." },
@@ -72,12 +72,14 @@ export default function ChatPanel() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const recognitionRef = useRef<any>(null);
 
+  const abortRef = useRef<AbortController | null>(null);
+
   useEffect(() => {
     setStudio(loadStudioContext());
     if (typeof window !== "undefined") {
       setLiteMode(localStorage.getItem(LITE_KEY) === "1");
       const savedMode = localStorage.getItem(MODE_KEY);
-      if (savedMode === "plan" || savedMode === "build") setMode(savedMode);
+      if (savedMode === "plan" || savedMode === "build" || savedMode === "chat") setMode(savedMode);
     }
   }, []);
 
@@ -170,7 +172,52 @@ export default function ChatPanel() {
   const switchMode = (m: Mode) => {
     setMode(m);
     try { localStorage.setItem(MODE_KEY, m); } catch {}
-    toast.success(m === "build" ? "Build mode — I'll write the script right away 🔨" : "Plan mode — I'll ask questions first 💡");
+    const labels: Record<Mode, string> = {
+      build: "Build mode — I'll write the script right away 🔨",
+      plan: "Plan mode — I'll ask questions first 💡",
+      chat: "Chat mode — normal AI, ask me anything 💬",
+    };
+    toast.success(labels[m]);
+  };
+
+  const stopGeneration = () => {
+    abortRef.current?.abort();
+    abortRef.current = null;
+  };
+
+  const exportChat = () => {
+    if (messages.length === 0) { toast.error("Nothing to export yet"); return; }
+    const text = messages
+      .map((m) => `### ${m.role === "user" ? "You" : "Bloxie"}\n\n${m.content}\n`)
+      .join("\n---\n\n");
+    const blob = new Blob([text], { type: "text/markdown;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `bloxie-chat-${Date.now()}.md`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success("Chat exported!");
+  };
+
+  const clearChat = () => {
+    if (messages.length === 0) return;
+    if (!confirm("Clear this chat? This won't delete saved chats in the sidebar.")) return;
+    setMessages([]);
+    setPendingImage(null);
+    setInput("");
+  };
+
+  const regenerate = () => {
+    // Find last user message, drop any assistant reply after it, resend
+    const lastUserIdx = [...messages].reverse().findIndex((m) => m.role === "user");
+    if (lastUserIdx === -1) return;
+    const idx = messages.length - 1 - lastUserIdx;
+    const lastUser = messages[idx];
+    const trimmed = messages.slice(0, idx);
+    setMessages(trimmed);
+    // small delay to let state apply
+    setTimeout(() => send(lastUser.content, lastUser.image ?? null), 0);
   };
 
   useEffect(() => {
@@ -256,12 +303,12 @@ export default function ChatPanel() {
     }
 
 
-    systemMessages.push({
-      role: "system",
-      content: mode === "plan"
-        ? `CURRENT MODE: PLAN. Do NOT write a full script yet. Instead, briefly confirm the goal in 1 sentence, then ask 2-4 short clarifying questions (bullet list) about what the user actually wants — features, edge cases, where it goes, who it's for. Only after the user answers should you write code on the next turn. Keep it friendly and short.`
-        : `CURRENT MODE: BUILD. Write the working script(s) right away with full implementation, locations, and step-by-step instructions. Don't stall with extra questions unless something is truly blocking.`,
-    });
+    const modePrompts: Record<Mode, string> = {
+      plan: `CURRENT MODE: PLAN. Do NOT write a full script yet. Briefly confirm the goal in 1 sentence, then ask 2-4 short clarifying questions (bullet list). Only after the user answers should you write code on the next turn. Keep it friendly and short.`,
+      build: `CURRENT MODE: BUILD. Write the working script(s) right away with full implementation, locations, and step-by-step instructions. Don't stall with extra questions unless something is truly blocking.`,
+      chat: `CURRENT MODE: CHAT. Act as a normal, friendly general-purpose AI assistant — like ChatGPT. You can help with ANY topic (homework, ideas, writing, math, life advice, jokes, coding in any language, etc.), not just Roblox. Only mention Roblox/Lua if the user actually asks about it. Be conversational and helpful.`,
+    };
+    systemMessages.push({ role: "system", content: modePrompts[mode] });
 
     systemMessages.push({
       role: "system",
@@ -298,6 +345,9 @@ ${studio!.snapshot ? `\n--- GAME TREE SNAPSHOT ---\n${studio!.snapshot}\n--- END
 
     const payloadMessages = [...systemMessages, ...apiUserMessages];
 
+    const controller = new AbortController();
+    abortRef.current = controller;
+
     try {
       const resp = await fetch(CHAT_URL, {
         method: "POST",
@@ -306,6 +356,7 @@ ${studio!.snapshot ? `\n--- GAME TREE SNAPSHOT ---\n${studio!.snapshot}\n--- END
           Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
         },
         body: JSON.stringify({ messages: payloadMessages }),
+        signal: controller.signal,
       });
 
       if (resp.status === 429) { toast.error("Slow down! Try again in a sec."); setLoading(false); return; }
@@ -352,10 +403,15 @@ ${studio!.snapshot ? `\n--- GAME TREE SNAPSHOT ---\n${studio!.snapshot}\n--- END
           }
         }
       }
-    } catch (e) {
-      console.error(e);
-      toast.error("Network error. Try again!");
+    } catch (e: any) {
+      if (e?.name === "AbortError") {
+        toast.success("Stopped");
+      } else {
+        console.error(e);
+        toast.error("Network error. Try again!");
+      }
     } finally {
+      abortRef.current = null;
       setLoading(false);
       if (convId && assistantSoFar) {
         await persistMessage(convId, "assistant", assistantSoFar);
@@ -384,7 +440,7 @@ ${studio!.snapshot ? `\n--- GAME TREE SNAPSHOT ---\n${studio!.snapshot}\n--- END
           <p className="text-xs text-muted-foreground">Your Roblox Lua scripting buddy 🎮</p>
         </div>
         <div className="ml-auto flex flex-wrap items-center gap-2">
-          {/* Build / Plan toggle */}
+          {/* Build / Plan / Chat toggle */}
           <div className="flex rounded-xl border border-border bg-secondary/40 p-0.5">
             <button
               type="button"
@@ -408,7 +464,34 @@ ${studio!.snapshot ? `\n--- GAME TREE SNAPSHOT ---\n${studio!.snapshot}\n--- END
               <Lightbulb className="h-3.5 w-3.5" />
               Plan
             </button>
+            <button
+              type="button"
+              onClick={() => switchMode("chat")}
+              title="Chat mode — normal AI, ask me anything"
+              className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold transition ${
+                mode === "chat" ? "bg-primary text-primary-foreground shadow-neon" : "text-muted-foreground hover:text-primary"
+              }`}
+            >
+              <MessageCircle className="h-3.5 w-3.5" />
+              Chat
+            </button>
           </div>
+          <button
+            type="button"
+            onClick={exportChat}
+            title="Export this chat as a file"
+            className="flex items-center justify-center rounded-xl border border-border bg-secondary/40 p-2 text-muted-foreground transition hover:text-primary hover:border-primary"
+          >
+            <Download className="h-4 w-4" />
+          </button>
+          <button
+            type="button"
+            onClick={clearChat}
+            title="Clear current chat"
+            className="flex items-center justify-center rounded-xl border border-border bg-secondary/40 p-2 text-muted-foreground transition hover:text-destructive hover:border-destructive"
+          >
+            <Eraser className="h-4 w-4" />
+          </button>
           <button
             type="button"
             onClick={toggleLite}
@@ -510,6 +593,18 @@ ${studio!.snapshot ? `\n--- GAME TREE SNAPSHOT ---\n${studio!.snapshot}\n--- END
             )}
           </div>
         )}
+        {!loading && messages.length > 0 && messages[messages.length - 1]?.role === "assistant" && (
+          <div className="mt-3 flex justify-center">
+            <button
+              type="button"
+              onClick={regenerate}
+              className="flex items-center gap-1.5 rounded-xl border border-border bg-secondary/40 px-3 py-1.5 text-xs font-semibold text-muted-foreground transition hover:text-primary hover:border-primary"
+            >
+              <RotateCcw className="h-3.5 w-3.5" />
+              Regenerate
+            </button>
+          </div>
+        )}
       </div>
 
       {pendingImage && (
@@ -558,21 +653,46 @@ ${studio!.snapshot ? `\n--- GAME TREE SNAPSHOT ---\n${studio!.snapshot}\n--- END
         >
           <Mic className="h-4 w-4" />
         </button>
-        <input
+        <textarea
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder={mode === "plan" ? "Describe your idea — I'll ask questions first…" : "Ask for any Roblox script…"}
-          className="flex-1 bg-transparent px-3 py-2 text-sm outline-none placeholder:text-muted-foreground"
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              if (!loading) send(input);
+            }
+          }}
+          rows={1}
+          placeholder={
+            mode === "plan"
+              ? "Describe your idea — I'll ask questions first…"
+              : mode === "chat"
+              ? "Ask me anything…"
+              : "Ask for any Roblox script…"
+          }
+          className="flex-1 resize-none bg-transparent px-3 py-2 text-sm outline-none placeholder:text-muted-foreground max-h-40"
           disabled={loading}
         />
-        <button
-          type="submit"
-          disabled={loading || (!input.trim() && !pendingImage)}
-          className="flex items-center gap-2 rounded-xl gradient-hero px-4 py-2 font-semibold text-primary-foreground transition hover:opacity-90 disabled:opacity-40"
-        >
-          <Send className="h-4 w-4" />
-          <span className="hidden sm:inline">Send</span>
-        </button>
+        {loading ? (
+          <button
+            type="button"
+            onClick={stopGeneration}
+            title="Stop generating"
+            className="flex items-center gap-2 rounded-xl bg-destructive px-4 py-2 font-semibold text-destructive-foreground transition hover:opacity-90"
+          >
+            <Square className="h-4 w-4 fill-current" />
+            <span className="hidden sm:inline">Stop</span>
+          </button>
+        ) : (
+          <button
+            type="submit"
+            disabled={!input.trim() && !pendingImage}
+            className="flex items-center gap-2 rounded-xl gradient-hero px-4 py-2 font-semibold text-primary-foreground transition hover:opacity-90 disabled:opacity-40"
+          >
+            <Send className="h-4 w-4" />
+            <span className="hidden sm:inline">Send</span>
+          </button>
+        )}
       </form>
       </div>
     </div>
