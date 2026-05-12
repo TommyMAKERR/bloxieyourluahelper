@@ -345,6 +345,9 @@ ${studio!.snapshot ? `\n--- GAME TREE SNAPSHOT ---\n${studio!.snapshot}\n--- END
 
     const payloadMessages = [...systemMessages, ...apiUserMessages];
 
+    const controller = new AbortController();
+    abortRef.current = controller;
+
     try {
       const resp = await fetch(CHAT_URL, {
         method: "POST",
@@ -353,6 +356,7 @@ ${studio!.snapshot ? `\n--- GAME TREE SNAPSHOT ---\n${studio!.snapshot}\n--- END
           Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
         },
         body: JSON.stringify({ messages: payloadMessages }),
+        signal: controller.signal,
       });
 
       if (resp.status === 429) { toast.error("Slow down! Try again in a sec."); setLoading(false); return; }
@@ -399,10 +403,15 @@ ${studio!.snapshot ? `\n--- GAME TREE SNAPSHOT ---\n${studio!.snapshot}\n--- END
           }
         }
       }
-    } catch (e) {
-      console.error(e);
-      toast.error("Network error. Try again!");
+    } catch (e: any) {
+      if (e?.name === "AbortError") {
+        toast.success("Stopped");
+      } else {
+        console.error(e);
+        toast.error("Network error. Try again!");
+      }
     } finally {
+      abortRef.current = null;
       setLoading(false);
       if (convId && assistantSoFar) {
         await persistMessage(convId, "assistant", assistantSoFar);
