@@ -653,21 +653,46 @@ ${studio!.snapshot ? `\n--- GAME TREE SNAPSHOT ---\n${studio!.snapshot}\n--- END
         >
           <Mic className="h-4 w-4" />
         </button>
-        <input
+        <textarea
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder={mode === "plan" ? "Describe your idea — I'll ask questions first…" : "Ask for any Roblox script…"}
-          className="flex-1 bg-transparent px-3 py-2 text-sm outline-none placeholder:text-muted-foreground"
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              if (!loading) send(input);
+            }
+          }}
+          rows={1}
+          placeholder={
+            mode === "plan"
+              ? "Describe your idea — I'll ask questions first…"
+              : mode === "chat"
+              ? "Ask me anything…"
+              : "Ask for any Roblox script…"
+          }
+          className="flex-1 resize-none bg-transparent px-3 py-2 text-sm outline-none placeholder:text-muted-foreground max-h-40"
           disabled={loading}
         />
-        <button
-          type="submit"
-          disabled={loading || (!input.trim() && !pendingImage)}
-          className="flex items-center gap-2 rounded-xl gradient-hero px-4 py-2 font-semibold text-primary-foreground transition hover:opacity-90 disabled:opacity-40"
-        >
-          <Send className="h-4 w-4" />
-          <span className="hidden sm:inline">Send</span>
-        </button>
+        {loading ? (
+          <button
+            type="button"
+            onClick={stopGeneration}
+            title="Stop generating"
+            className="flex items-center gap-2 rounded-xl bg-destructive px-4 py-2 font-semibold text-destructive-foreground transition hover:opacity-90"
+          >
+            <Square className="h-4 w-4 fill-current" />
+            <span className="hidden sm:inline">Stop</span>
+          </button>
+        ) : (
+          <button
+            type="submit"
+            disabled={!input.trim() && !pendingImage}
+            className="flex items-center gap-2 rounded-xl gradient-hero px-4 py-2 font-semibold text-primary-foreground transition hover:opacity-90 disabled:opacity-40"
+          >
+            <Send className="h-4 w-4" />
+            <span className="hidden sm:inline">Send</span>
+          </button>
+        )}
       </form>
       </div>
     </div>
