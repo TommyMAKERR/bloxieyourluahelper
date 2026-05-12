@@ -72,12 +72,14 @@ export default function ChatPanel() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const recognitionRef = useRef<any>(null);
 
+  const abortRef = useRef<AbortController | null>(null);
+
   useEffect(() => {
     setStudio(loadStudioContext());
     if (typeof window !== "undefined") {
       setLiteMode(localStorage.getItem(LITE_KEY) === "1");
       const savedMode = localStorage.getItem(MODE_KEY);
-      if (savedMode === "plan" || savedMode === "build") setMode(savedMode);
+      if (savedMode === "plan" || savedMode === "build" || savedMode === "chat") setMode(savedMode);
     }
   }, []);
 
