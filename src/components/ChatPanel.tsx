@@ -7,6 +7,7 @@ import LinkStudioButton, { loadStudioContext, type StudioContext } from "./LinkS
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import ConversationSidebar from "./ConversationSidebar";
+import FeaturesPanel, { loadSettings, saveSettings, type BloxieSettings } from "./FeaturesPanel";
 
 const LITE_KEY = "bloxie:studio-lite";
 const MODE_KEY = "bloxie:mode";
@@ -67,6 +68,8 @@ export default function ChatPanel() {
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarRefresh, setSidebarRefresh] = useState(0);
+  const [featuresOpen, setFeaturesOpen] = useState(false);
+  const [settings, setSettings] = useState<BloxieSettings>(loadSettings());
   const { user } = useAuth();
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -202,10 +205,15 @@ export default function ChatPanel() {
 
   const clearChat = () => {
     if (messages.length === 0) return;
-    if (!confirm("Clear this chat? This won't delete saved chats in the sidebar.")) return;
+    if (settings.confirmClear && !confirm("Clear this chat? This won't delete saved chats in the sidebar.")) return;
     setMessages([]);
     setPendingImage(null);
     setInput("");
+  };
+
+  const updateSettings = (s: BloxieSettings) => {
+    setSettings(s);
+    saveSettings(s);
   };
 
   const regenerate = () => {
@@ -221,8 +229,23 @@ export default function ChatPanel() {
   };
 
   useEffect(() => {
-    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
-  }, [messages]);
+    if (!settings.autoScroll) return;
+    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: settings.reduceMotion ? "auto" : "smooth" });
+  }, [messages, settings.autoScroll, settings.reduceMotion]);
+
+  // Apply accent + font size globally
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const root = document.documentElement;
+    const map: Record<BloxieSettings["accent"], string> = {
+      purple: "0.65 0.25 295",
+      blue: "0.65 0.25 250",
+      green: "0.7 0.22 145",
+      pink: "0.7 0.25 350",
+      orange: "0.7 0.22 50",
+    };
+    root.style.setProperty("--primary", `oklch(${map[settings.accent]})`);
+  }, [settings.accent]);
 
   const onPickImage = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -506,6 +529,16 @@ ${studio!.snapshot ? `\n--- GAME TREE SNAPSHOT ---\n${studio!.snapshot}\n--- END
             <span className="hidden sm:inline">Studio Lite</span>
             <span className={`h-2 w-2 rounded-full ${liteMode ? "bg-primary animate-pulse" : "bg-muted-foreground/40"}`} />
           </button>
+          <button
+            type="button"
+            onClick={() => setFeaturesOpen(true)}
+            title="Open Features (100+ templates, tools, settings)"
+            className="flex items-center gap-1.5 rounded-xl border border-primary/40 bg-primary/10 px-3 py-2 text-xs font-semibold text-primary transition hover:bg-primary/20"
+          >
+            <Sparkles className="h-4 w-4" />
+            <span className="hidden sm:inline">Features</span>
+            <span className="rounded-full bg-primary/20 px-1.5 text-[10px]">100+</span>
+          </button>
           <LinkStudioButton onChange={setStudio} />
         </div>
       </div>
@@ -520,6 +553,7 @@ ${studio!.snapshot ? `\n--- GAME TREE SNAPSHOT ---\n${studio!.snapshot}\n--- END
               <h3 className="text-2xl font-bold">What are we building today?</h3>
               <p className="mt-1 text-sm text-muted-foreground">Pick a starter, attach a screenshot, or describe your idea.</p>
             </div>
+            {!settings.hideStarters && (
             <div className="grid w-full max-w-2xl grid-cols-1 gap-3 sm:grid-cols-2">
               {STARTER_PROMPTS.map((p) => (
                 <button
@@ -535,6 +569,7 @@ ${studio!.snapshot ? `\n--- GAME TREE SNAPSHOT ---\n${studio!.snapshot}\n--- END
                 </button>
               ))}
             </div>
+            )}
           </div>
         ) : (
           <div className="space-y-6">
@@ -657,7 +692,7 @@ ${studio!.snapshot ? `\n--- GAME TREE SNAPSHOT ---\n${studio!.snapshot}\n--- END
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => {
-            if (e.key === "Enter" && !e.shiftKey) {
+            if (settings.sendOnEnter && e.key === "Enter" && !e.shiftKey) {
               e.preventDefault();
               if (!loading) send(input);
             }
@@ -695,6 +730,14 @@ ${studio!.snapshot ? `\n--- GAME TREE SNAPSHOT ---\n${studio!.snapshot}\n--- END
         )}
       </form>
       </div>
+      <FeaturesPanel
+        open={featuresOpen}
+        onClose={() => setFeaturesOpen(false)}
+        onInsertPrompt={(t) => setInput((p) => (p ? p + " " + t : t))}
+        onSendPrompt={(t) => send(t)}
+        settings={settings}
+        onSettingsChange={updateSettings}
+      />
     </div>
   );
 }
