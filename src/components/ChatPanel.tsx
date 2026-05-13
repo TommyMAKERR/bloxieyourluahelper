@@ -68,6 +68,8 @@ export default function ChatPanel() {
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarRefresh, setSidebarRefresh] = useState(0);
+  const [featuresOpen, setFeaturesOpen] = useState(false);
+  const [settings, setSettings] = useState<BloxieSettings>(loadSettings());
   const { user } = useAuth();
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
