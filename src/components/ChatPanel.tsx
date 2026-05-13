@@ -542,16 +542,6 @@ ${studio!.snapshot ? `\n--- GAME TREE SNAPSHOT ---\n${studio!.snapshot}\n--- END
           <LinkStudioButton onChange={setStudio} />
         </div>
       </div>
-      <FeaturesPanel
-        open={featuresOpen}
-        onClose={() => setFeaturesOpen(false)}
-        onInsertPrompt={(t) => setInput((p) => (p ? p + " " + t : t))}
-        onSendPrompt={(t) => send(t)}
-        settings={settings}
-        onSettingsChange={updateSettings}
-      />
-        </div>
-      </div>
 
       <div ref={scrollRef} className="flex-1 overflow-y-auto pr-2">
         {messages.length === 0 ? (
