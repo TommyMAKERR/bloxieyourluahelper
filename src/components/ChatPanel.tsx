@@ -229,8 +229,23 @@ export default function ChatPanel() {
   };
 
   useEffect(() => {
-    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
-  }, [messages]);
+    if (!settings.autoScroll) return;
+    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: settings.reduceMotion ? "auto" : "smooth" });
+  }, [messages, settings.autoScroll, settings.reduceMotion]);
+
+  // Apply accent + font size globally
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const root = document.documentElement;
+    const map: Record<BloxieSettings["accent"], string> = {
+      purple: "0.65 0.25 295",
+      blue: "0.65 0.25 250",
+      green: "0.7 0.22 145",
+      pink: "0.7 0.25 350",
+      orange: "0.7 0.22 50",
+    };
+    root.style.setProperty("--primary", `oklch(${map[settings.accent]})`);
+  }, [settings.accent]);
 
   const onPickImage = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
