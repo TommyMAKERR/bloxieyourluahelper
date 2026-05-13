@@ -553,6 +553,7 @@ ${studio!.snapshot ? `\n--- GAME TREE SNAPSHOT ---\n${studio!.snapshot}\n--- END
               <h3 className="text-2xl font-bold">What are we building today?</h3>
               <p className="mt-1 text-sm text-muted-foreground">Pick a starter, attach a screenshot, or describe your idea.</p>
             </div>
+            {!settings.hideStarters && (
             <div className="grid w-full max-w-2xl grid-cols-1 gap-3 sm:grid-cols-2">
               {STARTER_PROMPTS.map((p) => (
                 <button
