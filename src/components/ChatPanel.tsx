@@ -692,7 +692,7 @@ ${studio!.snapshot ? `\n--- GAME TREE SNAPSHOT ---\n${studio!.snapshot}\n--- END
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => {
-            if (e.key === "Enter" && !e.shiftKey) {
+            if (settings.sendOnEnter && e.key === "Enter" && !e.shiftKey) {
               e.preventDefault();
               if (!loading) send(input);
             }
