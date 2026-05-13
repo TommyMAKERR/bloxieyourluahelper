@@ -569,6 +569,7 @@ ${studio!.snapshot ? `\n--- GAME TREE SNAPSHOT ---\n${studio!.snapshot}\n--- END
                 </button>
               ))}
             </div>
+            )}
           </div>
         ) : (
           <div className="space-y-6">
