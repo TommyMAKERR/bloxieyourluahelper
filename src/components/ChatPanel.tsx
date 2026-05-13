@@ -728,6 +728,14 @@ ${studio!.snapshot ? `\n--- GAME TREE SNAPSHOT ---\n${studio!.snapshot}\n--- END
         )}
       </form>
       </div>
+      <FeaturesPanel
+        open={featuresOpen}
+        onClose={() => setFeaturesOpen(false)}
+        onInsertPrompt={(t) => setInput((p) => (p ? p + " " + t : t))}
+        onSendPrompt={(t) => send(t)}
+        settings={settings}
+        onSettingsChange={updateSettings}
+      />
     </div>
   );
 }
