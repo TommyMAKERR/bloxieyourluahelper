@@ -205,10 +205,15 @@ export default function ChatPanel() {
 
   const clearChat = () => {
     if (messages.length === 0) return;
-    if (!confirm("Clear this chat? This won't delete saved chats in the sidebar.")) return;
+    if (settings.confirmClear && !confirm("Clear this chat? This won't delete saved chats in the sidebar.")) return;
     setMessages([]);
     setPendingImage(null);
     setInput("");
+  };
+
+  const updateSettings = (s: BloxieSettings) => {
+    setSettings(s);
+    saveSettings(s);
   };
 
   const regenerate = () => {
