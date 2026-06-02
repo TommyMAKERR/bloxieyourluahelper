@@ -7,7 +7,7 @@ import LinkStudioButton, { loadStudioContext, type StudioContext } from "./LinkS
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import ConversationSidebar from "./ConversationSidebar";
-import FeaturesPanel, { loadSettings, saveSettings, type BloxieSettings } from "./FeaturesPanel";
+import FeaturesPanel, { loadSettings, saveSettings, loadAdmin, type BloxieSettings, type AdminConfig } from "./FeaturesPanel";
 
 const LITE_KEY = "bloxie:studio-lite";
 const MODE_KEY = "bloxie:mode";
@@ -70,6 +70,7 @@ export default function ChatPanel() {
   const [sidebarRefresh, setSidebarRefresh] = useState(0);
   const [featuresOpen, setFeaturesOpen] = useState(false);
   const [settings, setSettings] = useState<BloxieSettings>(loadSettings());
+  const [admin, setAdmin] = useState<AdminConfig>(loadAdmin());
   const { user } = useAuth();
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -233,19 +234,44 @@ export default function ChatPanel() {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: settings.reduceMotion ? "auto" : "smooth" });
   }, [messages, settings.autoScroll, settings.reduceMotion]);
 
-  // Apply accent + font size globally
+  // Apply accent + font size globally (admin accentHex overrides)
   useEffect(() => {
     if (typeof document === "undefined") return;
     const root = document.documentElement;
     const map: Record<BloxieSettings["accent"], string> = {
-      purple: "0.65 0.25 295",
-      blue: "0.65 0.25 250",
-      green: "0.7 0.22 145",
-      pink: "0.7 0.25 350",
-      orange: "0.7 0.22 50",
+      purple: "0.65 0.25 295", blue: "0.65 0.25 250", green: "0.7 0.22 145",
+      pink: "0.7 0.25 350", orange: "0.7 0.22 50", red: "0.65 0.27 25",
+      cyan: "0.75 0.18 200", yellow: "0.85 0.17 95",
     };
-    root.style.setProperty("--primary", `oklch(${map[settings.accent]})`);
-  }, [settings.accent]);
+    if (admin.accentHex && /^#[0-9a-fA-F]{6}$/.test(admin.accentHex)) {
+      root.style.setProperty("--primary", admin.accentHex);
+    } else {
+      root.style.setProperty("--primary", `oklch(${map[settings.accent]})`);
+    }
+  }, [settings.accent, admin.accentHex]);
+
+  // Live-update admin overrides
+  useEffect(() => {
+    const sync = () => setAdmin(loadAdmin());
+    window.addEventListener("bloxie:admin-update", sync);
+    return () => window.removeEventListener("bloxie:admin-update", sync);
+  }, []);
+
+  // Inject admin custom CSS
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const id = "bloxie-admin-css";
+    let el = document.getElementById(id) as HTMLStyleElement | null;
+    if (!el) { el = document.createElement("style"); el.id = id; document.head.appendChild(el); }
+    el.textContent = admin.customCSS || "";
+    return () => { /* keep across mounts */ };
+  }, [admin.customCSS]);
+
+  // Apply document title override
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    if (admin.siteTitle) document.title = admin.siteTitle;
+  }, [admin.siteTitle]);
 
   const onPickImage = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -454,13 +480,19 @@ ${studio!.snapshot ? `\n--- GAME TREE SNAPSHOT ---\n${studio!.snapshot}\n--- END
         refreshKey={sidebarRefresh}
       />
       <div className="flex flex-1 flex-col gap-4 p-4 md:p-6 min-w-0">
+      {admin.banner && (
+        <div className="rounded-xl px-4 py-2 text-center text-sm font-semibold text-white shadow"
+             style={{ background: admin.bannerColor || "#7c3aed" }}>
+          {admin.banner}
+        </div>
+      )}
       <div className="flex flex-wrap items-center gap-3 border-b border-border pb-4">
         <div className="flex h-11 w-11 items-center justify-center rounded-2xl gradient-hero shadow-neon">
           <Bot className="h-6 w-6 text-primary-foreground" />
         </div>
         <div>
-          <h2 className="text-xl font-bold">Bloxie</h2>
-          <p className="text-xs text-muted-foreground">Your Roblox Lua scripting buddy 🎮</p>
+          <h2 className="text-xl font-bold">{admin.siteTitle || "Bloxie"}</h2>
+          <p className="text-xs text-muted-foreground">{admin.tagline || "Your Roblox Lua scripting buddy 🎮"}</p>
         </div>
         <div className="ml-auto flex flex-wrap items-center gap-2">
           {/* Build / Plan / Chat toggle */}
@@ -550,12 +582,12 @@ ${studio!.snapshot ? `\n--- GAME TREE SNAPSHOT ---\n${studio!.snapshot}\n--- END
               <Sparkles className="h-10 w-10 text-primary-foreground" />
             </div>
             <div>
-              <h3 className="text-2xl font-bold">What are we building today?</h3>
-              <p className="mt-1 text-sm text-muted-foreground">Pick a starter, attach a screenshot, or describe your idea.</p>
+              <h3 className="text-2xl font-bold">{admin.welcomeTitle || "What are we building today?"}</h3>
+              <p className="mt-1 text-sm text-muted-foreground">{admin.welcomeSubtitle || "Pick a starter, attach a screenshot, or describe your idea."}</p>
             </div>
             {!settings.hideStarters && (
             <div className="grid w-full max-w-2xl grid-cols-1 gap-3 sm:grid-cols-2">
-              {STARTER_PROMPTS.map((p) => (
+              {(admin.starters.length > 0 ? admin.starters : STARTER_PROMPTS).map((p) => (
                 <button
                   key={p.title}
                   onClick={() => send(p.prompt)}
@@ -737,6 +769,7 @@ ${studio!.snapshot ? `\n--- GAME TREE SNAPSHOT ---\n${studio!.snapshot}\n--- END
         onSendPrompt={(t) => send(t)}
         settings={settings}
         onSettingsChange={updateSettings}
+        nickname={nickname}
       />
     </div>
   );
