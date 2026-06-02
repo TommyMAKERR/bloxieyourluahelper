@@ -234,22 +234,44 @@ export default function ChatPanel() {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: settings.reduceMotion ? "auto" : "smooth" });
   }, [messages, settings.autoScroll, settings.reduceMotion]);
 
-  // Apply accent + font size globally
+  // Apply accent + font size globally (admin accentHex overrides)
   useEffect(() => {
     if (typeof document === "undefined") return;
     const root = document.documentElement;
     const map: Record<BloxieSettings["accent"], string> = {
-      purple: "0.65 0.25 295",
-      blue: "0.65 0.25 250",
-      green: "0.7 0.22 145",
-      pink: "0.7 0.25 350",
-      orange: "0.7 0.22 50",
-      red: "0.65 0.27 25",
-      cyan: "0.75 0.18 200",
-      yellow: "0.85 0.17 95",
+      purple: "0.65 0.25 295", blue: "0.65 0.25 250", green: "0.7 0.22 145",
+      pink: "0.7 0.25 350", orange: "0.7 0.22 50", red: "0.65 0.27 25",
+      cyan: "0.75 0.18 200", yellow: "0.85 0.17 95",
     };
-    root.style.setProperty("--primary", `oklch(${map[settings.accent]})`);
-  }, [settings.accent]);
+    if (admin.accentHex && /^#[0-9a-fA-F]{6}$/.test(admin.accentHex)) {
+      root.style.setProperty("--primary", admin.accentHex);
+    } else {
+      root.style.setProperty("--primary", `oklch(${map[settings.accent]})`);
+    }
+  }, [settings.accent, admin.accentHex]);
+
+  // Live-update admin overrides
+  useEffect(() => {
+    const sync = () => setAdmin(loadAdmin());
+    window.addEventListener("bloxie:admin-update", sync);
+    return () => window.removeEventListener("bloxie:admin-update", sync);
+  }, []);
+
+  // Inject admin custom CSS
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const id = "bloxie-admin-css";
+    let el = document.getElementById(id) as HTMLStyleElement | null;
+    if (!el) { el = document.createElement("style"); el.id = id; document.head.appendChild(el); }
+    el.textContent = admin.customCSS || "";
+    return () => { /* keep across mounts */ };
+  }, [admin.customCSS]);
+
+  // Apply document title override
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    if (admin.siteTitle) document.title = admin.siteTitle;
+  }, [admin.siteTitle]);
 
   const onPickImage = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
