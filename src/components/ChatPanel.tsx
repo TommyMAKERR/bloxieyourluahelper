@@ -243,6 +243,9 @@ export default function ChatPanel() {
       green: "0.7 0.22 145",
       pink: "0.7 0.25 350",
       orange: "0.7 0.22 50",
+      red: "0.65 0.27 25",
+      cyan: "0.75 0.18 200",
+      yellow: "0.85 0.17 95",
     };
     root.style.setProperty("--primary", `oklch(${map[settings.accent]})`);
   }, [settings.accent]);
