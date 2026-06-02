@@ -769,6 +769,7 @@ ${studio!.snapshot ? `\n--- GAME TREE SNAPSHOT ---\n${studio!.snapshot}\n--- END
         onSendPrompt={(t) => send(t)}
         settings={settings}
         onSettingsChange={updateSettings}
+        nickname={nickname}
       />
     </div>
   );
