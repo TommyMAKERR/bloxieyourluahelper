@@ -480,13 +480,19 @@ ${studio!.snapshot ? `\n--- GAME TREE SNAPSHOT ---\n${studio!.snapshot}\n--- END
         refreshKey={sidebarRefresh}
       />
       <div className="flex flex-1 flex-col gap-4 p-4 md:p-6 min-w-0">
+      {admin.banner && (
+        <div className="rounded-xl px-4 py-2 text-center text-sm font-semibold text-white shadow"
+             style={{ background: admin.bannerColor || "#7c3aed" }}>
+          {admin.banner}
+        </div>
+      )}
       <div className="flex flex-wrap items-center gap-3 border-b border-border pb-4">
         <div className="flex h-11 w-11 items-center justify-center rounded-2xl gradient-hero shadow-neon">
           <Bot className="h-6 w-6 text-primary-foreground" />
         </div>
         <div>
-          <h2 className="text-xl font-bold">Bloxie</h2>
-          <p className="text-xs text-muted-foreground">Your Roblox Lua scripting buddy 🎮</p>
+          <h2 className="text-xl font-bold">{admin.siteTitle || "Bloxie"}</h2>
+          <p className="text-xs text-muted-foreground">{admin.tagline || "Your Roblox Lua scripting buddy 🎮"}</p>
         </div>
         <div className="ml-auto flex flex-wrap items-center gap-2">
           {/* Build / Plan / Chat toggle */}
