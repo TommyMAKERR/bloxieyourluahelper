@@ -217,6 +217,7 @@ type Props = {
   settings: BloxieSettings;
   onSettingsChange: (s: BloxieSettings) => void;
   nickname: string | null;
+  initialTab?: Tab;
 };
 
 type Tab = "settings" | "boosters" | "tools" | "admin";
