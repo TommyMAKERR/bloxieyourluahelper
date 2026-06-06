@@ -806,6 +806,7 @@ ${studio!.snapshot ? `\n--- GAME TREE SNAPSHOT ---\n${studio!.snapshot}\n--- END
         settings={settings}
         onSettingsChange={updateSettings}
         nickname={nickname}
+        initialTab={featuresInitialTab}
       />
     </div>
   );
