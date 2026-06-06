@@ -323,8 +323,8 @@ const SETTING_GROUPS: { group: string; items: { key: keyof BloxieSettings; label
 
 // total = 11 + 20 + 10 + 10 + 10 + 10 + 10 = 81 toggles + 8 choices (accent/theme/font/family/bubble/density/roundness/bgPattern/festive) = 100+
 
-export default function FeaturesPanel({ open, onClose, onInsertPrompt, onSendPrompt, settings, onSettingsChange, nickname }: Props) {
-  const [tab, setTab] = useState<Tab>("settings");
+export default function FeaturesPanel({ open, onClose, onInsertPrompt, onSendPrompt, settings, onSettingsChange, nickname, initialTab }: Props) {
+  const [tab, setTab] = useState<Tab>(initialTab ?? "settings");
   const [query, setQuery] = useState("");
   const [admin, setAdmin] = useState<AdminConfig>(loadAdmin());
 
@@ -336,7 +336,12 @@ export default function FeaturesPanel({ open, onClose, onInsertPrompt, onSendPro
     return () => window.removeEventListener("keydown", onKey);
   }, [open, onClose]);
 
-  useEffect(() => { setAdmin(loadAdmin()); }, [open]);
+  useEffect(() => {
+    if (open) {
+      setAdmin(loadAdmin());
+      if (initialTab) setTab(initialTab);
+    }
+  }, [open, initialTab]);
 
   if (!open) return null;
 
