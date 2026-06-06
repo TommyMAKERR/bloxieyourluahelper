@@ -209,6 +209,8 @@ const BOOSTERS: { icon: string; title: string; prefix: string }[] = [
   { icon: "🧾", title: "Summarize this", prefix: "Summarize this in 5 bullet points: " },
 ];
 
+type Tab = "settings" | "boosters" | "tools" | "admin";
+
 type Props = {
   open: boolean;
   onClose: () => void;
@@ -219,8 +221,6 @@ type Props = {
   nickname: string | null;
   initialTab?: Tab;
 };
-
-type Tab = "settings" | "boosters" | "tools" | "admin";
 
 // 100 settings grouped — labels are short and friendly
 const SETTING_GROUPS: { group: string; items: { key: keyof BloxieSettings; label: string }[] }[] = [
