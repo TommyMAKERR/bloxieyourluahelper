@@ -71,6 +71,23 @@ export default function ChatPanel() {
   const [featuresOpen, setFeaturesOpen] = useState(false);
   const [settings, setSettings] = useState<BloxieSettings>(loadSettings());
   const [admin, setAdmin] = useState<AdminConfig>(loadAdmin());
+  const [featuresInitialTab, setFeaturesInitialTab] = useState<"settings" | "boosters" | "tools" | "admin">("settings");
+  const adminAutoShownRef = useRef(false);
+
+  const isAdmin = (nickname || "").trim().toLowerCase() === ADMIN_NICKNAME;
+
+  // Auto-detect admin nickname → show confirmation + open admin panel once per session
+  useEffect(() => {
+    if (isAdmin && !adminAutoShownRef.current) {
+      adminAutoShownRef.current = true;
+      toast.success("👑 Admin unlocked", {
+        description: `Welcome, ${nickname}. Opening Admin Panel…`,
+        duration: 4000,
+      });
+      setFeaturesInitialTab("admin");
+      setFeaturesOpen(true);
+    }
+  }, [isAdmin, nickname]);
   const { user } = useAuth();
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
