@@ -7,7 +7,7 @@ import LinkStudioButton, { loadStudioContext, type StudioContext } from "./LinkS
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import ConversationSidebar from "./ConversationSidebar";
-import FeaturesPanel, { loadSettings, saveSettings, loadAdmin, type BloxieSettings, type AdminConfig } from "./FeaturesPanel";
+import FeaturesPanel, { loadSettings, saveSettings, loadAdmin, ADMIN_NICKNAME, type BloxieSettings, type AdminConfig } from "./FeaturesPanel";
 
 const LITE_KEY = "bloxie:studio-lite";
 const MODE_KEY = "bloxie:mode";
@@ -71,6 +71,23 @@ export default function ChatPanel() {
   const [featuresOpen, setFeaturesOpen] = useState(false);
   const [settings, setSettings] = useState<BloxieSettings>(loadSettings());
   const [admin, setAdmin] = useState<AdminConfig>(loadAdmin());
+  const [featuresInitialTab, setFeaturesInitialTab] = useState<"settings" | "boosters" | "tools" | "admin">("settings");
+  const adminAutoShownRef = useRef(false);
+
+  const isAdmin = (nickname || "").trim().toLowerCase() === ADMIN_NICKNAME;
+
+  // Auto-detect admin nickname → show confirmation + open admin panel once per session
+  useEffect(() => {
+    if (isAdmin && !adminAutoShownRef.current) {
+      adminAutoShownRef.current = true;
+      toast.success("👑 Admin unlocked", {
+        description: `Welcome, ${nickname}. Opening Admin Panel…`,
+        duration: 4000,
+      });
+      setFeaturesInitialTab("admin");
+      setFeaturesOpen(true);
+    }
+  }, [isAdmin, nickname]);
   const { user } = useAuth();
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -491,10 +508,29 @@ ${studio!.snapshot ? `\n--- GAME TREE SNAPSHOT ---\n${studio!.snapshot}\n--- END
           <Bot className="h-6 w-6 text-primary-foreground" />
         </div>
         <div>
-          <h2 className="text-xl font-bold">{admin.siteTitle || "Bloxie"}</h2>
-          <p className="text-xs text-muted-foreground">{admin.tagline || "Your Roblox Lua scripting buddy 🎮"}</p>
+          <h2 className="text-xl font-bold flex items-center gap-2">
+            {admin.siteTitle || "Bloxie"}
+            {isAdmin && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-destructive px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-destructive-foreground shadow-neon animate-pulse">
+                👑 Admin
+              </span>
+            )}
+          </h2>
+          <p className="text-xs text-muted-foreground">
+            {isAdmin ? `Logged in as ${nickname} — full control unlocked` : (admin.tagline || "Your Roblox Lua scripting buddy 🎮")}
+          </p>
         </div>
         <div className="ml-auto flex flex-wrap items-center gap-2">
+          {isAdmin && (
+            <button
+              type="button"
+              onClick={() => { setFeaturesInitialTab("admin"); setFeaturesOpen(true); }}
+              title="Open Admin Panel — change site title, banner, accent, starters, custom CSS"
+              className="flex items-center gap-1.5 rounded-xl bg-destructive px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-destructive-foreground shadow-neon transition hover:opacity-90"
+            >
+              👑 Admin Panel
+            </button>
+          )}
           {/* Build / Plan / Chat toggle */}
           <div className="flex rounded-xl border border-border bg-secondary/40 p-0.5">
             <button
@@ -770,6 +806,7 @@ ${studio!.snapshot ? `\n--- GAME TREE SNAPSHOT ---\n${studio!.snapshot}\n--- END
         settings={settings}
         onSettingsChange={updateSettings}
         nickname={nickname}
+        initialTab={featuresInitialTab}
       />
     </div>
   );
