@@ -508,10 +508,29 @@ ${studio!.snapshot ? `\n--- GAME TREE SNAPSHOT ---\n${studio!.snapshot}\n--- END
           <Bot className="h-6 w-6 text-primary-foreground" />
         </div>
         <div>
-          <h2 className="text-xl font-bold">{admin.siteTitle || "Bloxie"}</h2>
-          <p className="text-xs text-muted-foreground">{admin.tagline || "Your Roblox Lua scripting buddy 🎮"}</p>
+          <h2 className="text-xl font-bold flex items-center gap-2">
+            {admin.siteTitle || "Bloxie"}
+            {isAdmin && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-destructive px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-destructive-foreground shadow-neon animate-pulse">
+                👑 Admin
+              </span>
+            )}
+          </h2>
+          <p className="text-xs text-muted-foreground">
+            {isAdmin ? `Logged in as ${nickname} — full control unlocked` : (admin.tagline || "Your Roblox Lua scripting buddy 🎮")}
+          </p>
         </div>
         <div className="ml-auto flex flex-wrap items-center gap-2">
+          {isAdmin && (
+            <button
+              type="button"
+              onClick={() => { setFeaturesInitialTab("admin"); setFeaturesOpen(true); }}
+              title="Open Admin Panel — change site title, banner, accent, starters, custom CSS"
+              className="flex items-center gap-1.5 rounded-xl bg-destructive px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-destructive-foreground shadow-neon transition hover:opacity-90"
+            >
+              👑 Admin Panel
+            </button>
+          )}
           {/* Build / Plan / Chat toggle */}
           <div className="flex rounded-xl border border-border bg-secondary/40 p-0.5">
             <button
