@@ -7,7 +7,8 @@ import LinkStudioButton, { loadStudioContext, type StudioContext } from "./LinkS
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import ConversationSidebar from "./ConversationSidebar";
-import FeaturesPanel, { loadSettings, saveSettings, loadAdmin, ADMIN_NICKNAME, type BloxieSettings, type AdminConfig } from "./FeaturesPanel";
+import FeaturesPanel, { loadSettings, saveSettings, loadAdmin, applySharedAdmin, ADMIN_NICKNAME, type BloxieSettings, type AdminConfig } from "./FeaturesPanel";
+import { fetchSharedConfig, subscribeSharedConfig } from "@/lib/siteConfig";
 
 const LITE_KEY = "bloxie:studio-lite";
 const MODE_KEY = "bloxie:mode";
