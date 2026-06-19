@@ -18,13 +18,13 @@ function authHeaders(nickname?: string | null) {
 
 // Read directly from the table (faster, RLS allows public select).
 export async function fetchSharedConfig(): Promise<Partial<AdminConfig> | null> {
-  const { data, error } = await supabase
-    .from("site_config" as any)
+  const { data, error } = await (supabase as any)
+    .from("site_config")
     .select("config")
     .eq("id", "global")
     .maybeSingle();
   if (error) { console.error("fetchSharedConfig", error); return null; }
-  return (data?.config as Partial<AdminConfig>) || {};
+  return ((data as any)?.config as Partial<AdminConfig>) || {};
 }
 
 export async function saveSharedConfig(config: AdminConfig, nickname: string) {
