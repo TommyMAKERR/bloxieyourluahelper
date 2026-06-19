@@ -658,10 +658,17 @@ export default function FeaturesPanel({ open, onClose, onInsertPrompt, onSendPro
                 <p className="mt-1 text-[10px] text-muted-foreground">Tip: ask Bloxie in Chat mode for CSS, then paste it here.</p>
               </div>
 
-              <button onClick={() => { saveAdmin(DEFAULT_ADMIN); setAdmin(DEFAULT_ADMIN); toast.success("Admin reset"); }}
-                className="w-full rounded-lg border border-border bg-secondary/40 px-3 py-2 text-xs font-semibold text-muted-foreground hover:text-destructive hover:border-destructive">
-                Reset admin overrides
-              </button>
+              <div className="sticky bottom-0 -mx-3 -mb-3 space-y-2 border-t border-border bg-card/95 p-3 backdrop-blur">
+                <button onClick={publishAdmin} disabled={syncing}
+                  className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-3 py-2.5 text-sm font-bold text-primary-foreground transition hover:opacity-90 disabled:opacity-50">
+                  {syncing ? <><Loader2 className="h-4 w-4 animate-spin" /> Publishing…</> : <>🌐 Publish live to everyone</>}
+                </button>
+                {lastSavedAt && <p className="text-center text-[10px] text-muted-foreground">Last published {new Date(lastSavedAt).toLocaleTimeString()}</p>}
+                <button onClick={resetAll}
+                  className="w-full rounded-lg border border-border bg-secondary/40 px-3 py-2 text-xs font-semibold text-muted-foreground hover:text-destructive hover:border-destructive">
+                  Reset live site to defaults
+                </button>
+              </div>
             </div>
           )}
         </div>
