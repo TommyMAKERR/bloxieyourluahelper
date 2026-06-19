@@ -268,11 +268,25 @@ export default function ChatPanel() {
     }
   }, [settings.accent, admin.accentHex]);
 
-  // Live-update admin overrides
+  // Live-update admin overrides (from local edits or realtime DB pushes)
   useEffect(() => {
     const sync = () => setAdmin(loadAdmin());
     window.addEventListener("bloxie:admin-update", sync);
     return () => window.removeEventListener("bloxie:admin-update", sync);
+  }, []);
+
+  // Load the shared admin config on first mount + subscribe to live updates so
+  // every visitor sees admin changes instantly and permanently.
+  useEffect(() => {
+    let mounted = true;
+    fetchSharedConfig().then((remote) => {
+      if (!mounted || !remote) return;
+      setAdmin(applySharedAdmin(remote));
+    }).catch(() => {});
+    const unsub = subscribeSharedConfig((remote) => {
+      setAdmin(applySharedAdmin(remote));
+    });
+    return () => { mounted = false; unsub(); };
   }, []);
 
   // Inject admin custom CSS
