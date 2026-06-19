@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-import { X, Search, Sparkles, Wand2, Settings as SettingsIcon, Zap, Shield, Plus, Trash2 } from "lucide-react";
+import { X, Search, Sparkles, Wand2, Settings as SettingsIcon, Zap, Shield, Plus, Trash2, Loader2, Brain } from "lucide-react";
 import { toast } from "sonner";
+import { fetchSharedConfig, saveSharedConfig, aiCustomizeSite, resetSharedConfig } from "@/lib/siteConfig";
 
 const SETTINGS_KEY = "bloxie:settings";
 const ADMIN_KEY = "bloxie:admin";
@@ -185,6 +186,14 @@ export function saveAdmin(a: AdminConfig) {
   window.dispatchEvent(new CustomEvent("bloxie:admin-update"));
 }
 
+// Apply server config locally (used by ChatPanel after loading shared config)
+export function applySharedAdmin(remote: Partial<AdminConfig>) {
+  const merged = { ...DEFAULT_ADMIN, ...remote };
+  try { localStorage.setItem(ADMIN_KEY, JSON.stringify(merged)); } catch {}
+  window.dispatchEvent(new CustomEvent("bloxie:admin-update"));
+  return merged;
+}
+
 // Boosters (kept — useful prompt prefixes)
 const BOOSTERS: { icon: string; title: string; prefix: string }[] = [
   { icon: "🧒", title: "Explain like I'm 10", prefix: "Explain like I'm 10 years old, super simple: " },
@@ -327,6 +336,10 @@ export default function FeaturesPanel({ open, onClose, onInsertPrompt, onSendPro
   const [tab, setTab] = useState<Tab>(initialTab ?? "settings");
   const [query, setQuery] = useState("");
   const [admin, setAdmin] = useState<AdminConfig>(loadAdmin());
+  const [aiPrompt, setAiPrompt] = useState("");
+  const [aiBusy, setAiBusy] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [lastSavedAt, setLastSavedAt] = useState<number | null>(null);
 
   const isAdmin = (nickname || "").trim().toLowerCase() === ADMIN_NICKNAME;
 
@@ -340,8 +353,14 @@ export default function FeaturesPanel({ open, onClose, onInsertPrompt, onSendPro
     if (open) {
       setAdmin(loadAdmin());
       if (initialTab) setTab(initialTab);
+      // Pull latest shared config from server so admin edits start from the real published state
+      if (isAdmin) {
+        fetchSharedConfig().then((remote) => {
+          if (remote) setAdmin(applySharedAdmin(remote));
+        }).catch(() => {});
+      }
     }
-  }, [open, initialTab]);
+  }, [open, initialTab, isAdmin]);
 
   if (!open) return null;
 
@@ -351,6 +370,54 @@ export default function FeaturesPanel({ open, onClose, onInsertPrompt, onSendPro
   const updateAdmin = <K extends keyof AdminConfig>(k: K, v: AdminConfig[K]) => {
     const next = { ...admin, [k]: v };
     setAdmin(next); saveAdmin(next);
+  };
+
+  // Publish current admin config to ALL visitors (saves to DB).
+  const publishAdmin = async () => {
+    if (!isAdmin || !nickname) return;
+    setSyncing(true);
+    try {
+      const saved = await saveSharedConfig(admin, nickname);
+      setAdmin(applySharedAdmin(saved));
+      setLastSavedAt(Date.now());
+      toast.success("Published live to everyone 🌐");
+    } catch (e: any) {
+      toast.error(e?.message || "Publish failed");
+    } finally {
+      setSyncing(false);
+    }
+  };
+
+  const runAiCustomize = async () => {
+    if (!isAdmin || !nickname) return;
+    const instruction = aiPrompt.trim();
+    if (!instruction) { toast.error("Tell the AI what to change"); return; }
+    setAiBusy(true);
+    try {
+      const saved = await aiCustomizeSite(instruction, nickname);
+      setAdmin(applySharedAdmin(saved));
+      setAiPrompt("");
+      toast.success("AI updated the website ✨ (live for everyone)");
+    } catch (e: any) {
+      toast.error(e?.message || "AI customize failed");
+    } finally {
+      setAiBusy(false);
+    }
+  };
+
+  const resetAll = async () => {
+    if (!isAdmin || !nickname) {
+      saveAdmin(DEFAULT_ADMIN); setAdmin(DEFAULT_ADMIN); toast.success("Admin reset");
+      return;
+    }
+    if (!confirm("Reset the live site for ALL visitors?")) return;
+    try {
+      const saved = await resetSharedConfig(nickname);
+      setAdmin(applySharedAdmin(saved));
+      toast.success("Live site reset");
+    } catch (e: any) {
+      toast.error(e?.message || "Reset failed");
+    }
   };
 
   const filteredBoost = BOOSTERS.filter((b) => !query.trim() || b.title.toLowerCase().includes(query.toLowerCase()));
@@ -501,8 +568,36 @@ export default function FeaturesPanel({ open, onClose, onInsertPrompt, onSendPro
           {tab === "admin" && isAdmin && (
             <div className="space-y-5">
               <p className="rounded-xl border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs">
-                <span className="font-bold text-destructive">Admin Panel unlocked.</span> Anything you change here applies live to the site for this browser.
+                <span className="font-bold text-destructive">Admin Panel unlocked.</span> Changes are saved to YOUR browser instantly, and you can publish them live to every visitor with the buttons at the bottom.
               </p>
+
+              {/* AI Customize — admin-only superpower */}
+              <div className="rounded-xl border-2 border-primary/50 bg-gradient-to-br from-primary/10 to-destructive/10 p-3">
+                <div className="mb-2 flex items-center gap-2">
+                  <Brain className="h-4 w-4 text-primary" />
+                  <span className="text-sm font-bold">AI Customize Website</span>
+                  <span className="ml-auto rounded-full bg-primary/20 px-2 py-0.5 text-[10px] font-bold text-primary">ADMIN AI</span>
+                </div>
+                <p className="mb-2 text-[11px] text-muted-foreground">
+                  Describe any change and the AI will rewrite the live site config (colors, text, banner, custom CSS, starters…). Saved permanently for everyone.
+                </p>
+                <textarea
+                  value={aiPrompt}
+                  onChange={(e) => setAiPrompt(e.target.value)}
+                  rows={3}
+                  disabled={aiBusy}
+                  placeholder='e.g. "Make the whole site neon green with a retro arcade vibe and change the title to BLOXIE 9000"'
+                  className="w-full resize-y rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none disabled:opacity-50"
+                />
+                <button
+                  onClick={runAiCustomize}
+                  disabled={aiBusy || !aiPrompt.trim()}
+                  className="mt-2 flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground transition hover:opacity-90 disabled:opacity-50"
+                >
+                  {aiBusy ? <><Loader2 className="h-4 w-4 animate-spin" /> AI rebuilding the site…</> : <><Sparkles className="h-4 w-4" /> Apply with AI (live for everyone)</>}
+                </button>
+              </div>
+
 
               <AdminInput label="Site title (header)" value={admin.siteTitle} placeholder="Bloxie.lua" onChange={(v) => updateAdmin("siteTitle", v)} />
               <AdminInput label="Tagline" value={admin.tagline} placeholder="Your Roblox Lua scripting buddy 🎮" onChange={(v) => updateAdmin("tagline", v)} />
@@ -563,10 +658,17 @@ export default function FeaturesPanel({ open, onClose, onInsertPrompt, onSendPro
                 <p className="mt-1 text-[10px] text-muted-foreground">Tip: ask Bloxie in Chat mode for CSS, then paste it here.</p>
               </div>
 
-              <button onClick={() => { saveAdmin(DEFAULT_ADMIN); setAdmin(DEFAULT_ADMIN); toast.success("Admin reset"); }}
-                className="w-full rounded-lg border border-border bg-secondary/40 px-3 py-2 text-xs font-semibold text-muted-foreground hover:text-destructive hover:border-destructive">
-                Reset admin overrides
-              </button>
+              <div className="sticky bottom-0 -mx-3 -mb-3 space-y-2 border-t border-border bg-card/95 p-3 backdrop-blur">
+                <button onClick={publishAdmin} disabled={syncing}
+                  className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-3 py-2.5 text-sm font-bold text-primary-foreground transition hover:opacity-90 disabled:opacity-50">
+                  {syncing ? <><Loader2 className="h-4 w-4 animate-spin" /> Publishing…</> : <>🌐 Publish live to everyone</>}
+                </button>
+                {lastSavedAt && <p className="text-center text-[10px] text-muted-foreground">Last published {new Date(lastSavedAt).toLocaleTimeString()}</p>}
+                <button onClick={resetAll}
+                  className="w-full rounded-lg border border-border bg-secondary/40 px-3 py-2 text-xs font-semibold text-muted-foreground hover:text-destructive hover:border-destructive">
+                  Reset live site to defaults
+                </button>
+              </div>
             </div>
           )}
         </div>

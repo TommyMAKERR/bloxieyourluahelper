@@ -7,7 +7,8 @@ import LinkStudioButton, { loadStudioContext, type StudioContext } from "./LinkS
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import ConversationSidebar from "./ConversationSidebar";
-import FeaturesPanel, { loadSettings, saveSettings, loadAdmin, ADMIN_NICKNAME, type BloxieSettings, type AdminConfig } from "./FeaturesPanel";
+import FeaturesPanel, { loadSettings, saveSettings, loadAdmin, applySharedAdmin, ADMIN_NICKNAME, type BloxieSettings, type AdminConfig } from "./FeaturesPanel";
+import { fetchSharedConfig, subscribeSharedConfig } from "@/lib/siteConfig";
 
 const LITE_KEY = "bloxie:studio-lite";
 const MODE_KEY = "bloxie:mode";
@@ -267,11 +268,25 @@ export default function ChatPanel() {
     }
   }, [settings.accent, admin.accentHex]);
 
-  // Live-update admin overrides
+  // Live-update admin overrides (from local edits or realtime DB pushes)
   useEffect(() => {
     const sync = () => setAdmin(loadAdmin());
     window.addEventListener("bloxie:admin-update", sync);
     return () => window.removeEventListener("bloxie:admin-update", sync);
+  }, []);
+
+  // Load the shared admin config on first mount + subscribe to live updates so
+  // every visitor sees admin changes instantly and permanently.
+  useEffect(() => {
+    let mounted = true;
+    fetchSharedConfig().then((remote) => {
+      if (!mounted || !remote) return;
+      setAdmin(applySharedAdmin(remote));
+    }).catch(() => {});
+    const unsub = subscribeSharedConfig((remote) => {
+      setAdmin(applySharedAdmin(remote));
+    });
+    return () => { mounted = false; unsub(); };
   }, []);
 
   // Inject admin custom CSS
