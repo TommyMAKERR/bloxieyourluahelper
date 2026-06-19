@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-import { X, Search, Sparkles, Wand2, Settings as SettingsIcon, Zap, Shield, Plus, Trash2 } from "lucide-react";
+import { X, Search, Sparkles, Wand2, Settings as SettingsIcon, Zap, Shield, Plus, Trash2, Loader2, Brain } from "lucide-react";
 import { toast } from "sonner";
+import { fetchSharedConfig, saveSharedConfig, aiCustomizeSite, resetSharedConfig } from "@/lib/siteConfig";
 
 const SETTINGS_KEY = "bloxie:settings";
 const ADMIN_KEY = "bloxie:admin";
