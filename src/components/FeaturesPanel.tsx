@@ -186,6 +186,14 @@ export function saveAdmin(a: AdminConfig) {
   window.dispatchEvent(new CustomEvent("bloxie:admin-update"));
 }
 
+// Apply server config locally (used by ChatPanel after loading shared config)
+export function applySharedAdmin(remote: Partial<AdminConfig>) {
+  const merged = { ...DEFAULT_ADMIN, ...remote };
+  try { localStorage.setItem(ADMIN_KEY, JSON.stringify(merged)); } catch {}
+  window.dispatchEvent(new CustomEvent("bloxie:admin-update"));
+  return merged;
+}
+
 // Boosters (kept — useful prompt prefixes)
 const BOOSTERS: { icon: string; title: string; prefix: string }[] = [
   { icon: "🧒", title: "Explain like I'm 10", prefix: "Explain like I'm 10 years old, super simple: " },
