@@ -336,6 +336,10 @@ export default function FeaturesPanel({ open, onClose, onInsertPrompt, onSendPro
   const [tab, setTab] = useState<Tab>(initialTab ?? "settings");
   const [query, setQuery] = useState("");
   const [admin, setAdmin] = useState<AdminConfig>(loadAdmin());
+  const [aiPrompt, setAiPrompt] = useState("");
+  const [aiBusy, setAiBusy] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [lastSavedAt, setLastSavedAt] = useState<number | null>(null);
 
   const isAdmin = (nickname || "").trim().toLowerCase() === ADMIN_NICKNAME;
 
@@ -349,8 +353,14 @@ export default function FeaturesPanel({ open, onClose, onInsertPrompt, onSendPro
     if (open) {
       setAdmin(loadAdmin());
       if (initialTab) setTab(initialTab);
+      // Pull latest shared config from server so admin edits start from the real published state
+      if (isAdmin) {
+        fetchSharedConfig().then((remote) => {
+          if (remote) setAdmin(applySharedAdmin(remote));
+        }).catch(() => {});
+      }
     }
-  }, [open, initialTab]);
+  }, [open, initialTab, isAdmin]);
 
   if (!open) return null;
 
@@ -360,6 +370,54 @@ export default function FeaturesPanel({ open, onClose, onInsertPrompt, onSendPro
   const updateAdmin = <K extends keyof AdminConfig>(k: K, v: AdminConfig[K]) => {
     const next = { ...admin, [k]: v };
     setAdmin(next); saveAdmin(next);
+  };
+
+  // Publish current admin config to ALL visitors (saves to DB).
+  const publishAdmin = async () => {
+    if (!isAdmin || !nickname) return;
+    setSyncing(true);
+    try {
+      const saved = await saveSharedConfig(admin, nickname);
+      setAdmin(applySharedAdmin(saved));
+      setLastSavedAt(Date.now());
+      toast.success("Published live to everyone 🌐");
+    } catch (e: any) {
+      toast.error(e?.message || "Publish failed");
+    } finally {
+      setSyncing(false);
+    }
+  };
+
+  const runAiCustomize = async () => {
+    if (!isAdmin || !nickname) return;
+    const instruction = aiPrompt.trim();
+    if (!instruction) { toast.error("Tell the AI what to change"); return; }
+    setAiBusy(true);
+    try {
+      const saved = await aiCustomizeSite(instruction, nickname);
+      setAdmin(applySharedAdmin(saved));
+      setAiPrompt("");
+      toast.success("AI updated the website ✨ (live for everyone)");
+    } catch (e: any) {
+      toast.error(e?.message || "AI customize failed");
+    } finally {
+      setAiBusy(false);
+    }
+  };
+
+  const resetAll = async () => {
+    if (!isAdmin || !nickname) {
+      saveAdmin(DEFAULT_ADMIN); setAdmin(DEFAULT_ADMIN); toast.success("Admin reset");
+      return;
+    }
+    if (!confirm("Reset the live site for ALL visitors?")) return;
+    try {
+      const saved = await resetSharedConfig(nickname);
+      setAdmin(applySharedAdmin(saved));
+      toast.success("Live site reset");
+    } catch (e: any) {
+      toast.error(e?.message || "Reset failed");
+    }
   };
 
   const filteredBoost = BOOSTERS.filter((b) => !query.trim() || b.title.toLowerCase().includes(query.toLowerCase()));
