@@ -568,8 +568,36 @@ export default function FeaturesPanel({ open, onClose, onInsertPrompt, onSendPro
           {tab === "admin" && isAdmin && (
             <div className="space-y-5">
               <p className="rounded-xl border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs">
-                <span className="font-bold text-destructive">Admin Panel unlocked.</span> Anything you change here applies live to the site for this browser.
+                <span className="font-bold text-destructive">Admin Panel unlocked.</span> Changes are saved to YOUR browser instantly, and you can publish them live to every visitor with the buttons at the bottom.
               </p>
+
+              {/* AI Customize — admin-only superpower */}
+              <div className="rounded-xl border-2 border-primary/50 bg-gradient-to-br from-primary/10 to-destructive/10 p-3">
+                <div className="mb-2 flex items-center gap-2">
+                  <Brain className="h-4 w-4 text-primary" />
+                  <span className="text-sm font-bold">AI Customize Website</span>
+                  <span className="ml-auto rounded-full bg-primary/20 px-2 py-0.5 text-[10px] font-bold text-primary">ADMIN AI</span>
+                </div>
+                <p className="mb-2 text-[11px] text-muted-foreground">
+                  Describe any change and the AI will rewrite the live site config (colors, text, banner, custom CSS, starters…). Saved permanently for everyone.
+                </p>
+                <textarea
+                  value={aiPrompt}
+                  onChange={(e) => setAiPrompt(e.target.value)}
+                  rows={3}
+                  disabled={aiBusy}
+                  placeholder='e.g. "Make the whole site neon green with a retro arcade vibe and change the title to BLOXIE 9000"'
+                  className="w-full resize-y rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none disabled:opacity-50"
+                />
+                <button
+                  onClick={runAiCustomize}
+                  disabled={aiBusy || !aiPrompt.trim()}
+                  className="mt-2 flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground transition hover:opacity-90 disabled:opacity-50"
+                >
+                  {aiBusy ? <><Loader2 className="h-4 w-4 animate-spin" /> AI rebuilding the site…</> : <><Sparkles className="h-4 w-4" /> Apply with AI (live for everyone)</>}
+                </button>
+              </div>
+
 
               <AdminInput label="Site title (header)" value={admin.siteTitle} placeholder="Bloxie.lua" onChange={(v) => updateAdmin("siteTitle", v)} />
               <AdminInput label="Tagline" value={admin.tagline} placeholder="Your Roblox Lua scripting buddy 🎮" onChange={(v) => updateAdmin("tagline", v)} />
