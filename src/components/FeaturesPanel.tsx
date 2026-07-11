@@ -166,11 +166,15 @@ export type AdminConfig = {
   customCSS: string;
   starters: AdminStarter[];
   hideHeroSection: boolean;
+  announcement: string;
+  announcementAuthor: string;
+  announcementAt: number;
 };
 export const DEFAULT_ADMIN: AdminConfig = {
   siteTitle: "", tagline: "", banner: "", bannerColor: "#7c3aed",
   footer: "", welcomeTitle: "", welcomeSubtitle: "",
   accentHex: "", customCSS: "", starters: [], hideHeroSection: false,
+  announcement: "", announcementAuthor: "Tommy", announcementAt: 0,
 };
 export function loadAdmin(): AdminConfig {
   if (typeof window === "undefined") return DEFAULT_ADMIN;
