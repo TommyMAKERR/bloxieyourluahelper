@@ -667,6 +667,7 @@ export default function FeaturesPanel({ open, onClose, onInsertPrompt, onSendPro
                 </div>
               </div>
 
+              <AdminInput label="Site title (header)" value={admin.siteTitle} placeholder="Bloxie.lua" onChange={(v) => updateAdmin("siteTitle", v)} />
               <AdminInput label="Tagline" value={admin.tagline} placeholder="Your Roblox Lua scripting buddy 🎮" onChange={(v) => updateAdmin("tagline", v)} />
               <AdminInput label="Top banner message" value={admin.banner} placeholder="Leave blank to hide" onChange={(v) => updateAdmin("banner", v)} />
               <div>
