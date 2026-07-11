@@ -166,11 +166,15 @@ export type AdminConfig = {
   customCSS: string;
   starters: AdminStarter[];
   hideHeroSection: boolean;
+  announcement: string;
+  announcementAuthor: string;
+  announcementAt: number;
 };
 export const DEFAULT_ADMIN: AdminConfig = {
   siteTitle: "", tagline: "", banner: "", bannerColor: "#7c3aed",
   footer: "", welcomeTitle: "", welcomeSubtitle: "",
   accentHex: "", customCSS: "", starters: [], hideHeroSection: false,
+  announcement: "", announcementAuthor: "Tommy", announcementAt: 0,
 };
 export function loadAdmin(): AdminConfig {
   if (typeof window === "undefined") return DEFAULT_ADMIN;
@@ -598,6 +602,70 @@ export default function FeaturesPanel({ open, onClose, onInsertPrompt, onSendPro
                 </button>
               </div>
 
+              {/* Announcements — publishes instantly to everyone */}
+              <div className="rounded-xl border-2 border-accent/50 bg-accent/5 p-3">
+                <div className="mb-2 flex items-center gap-2">
+                  <span className="text-lg">📢</span>
+                  <span className="text-sm font-bold">Announcements</span>
+                  <span className="ml-auto rounded-full bg-accent/20 px-2 py-0.5 text-[10px] font-bold text-accent">LIVE</span>
+                </div>
+                <p className="mb-2 text-[11px] text-muted-foreground">
+                  Type a message and hit post — every visitor will instantly see: <em>{admin.announcementAuthor || "Tommy"}: your message</em>.
+                </p>
+                <label className="mb-1 block text-[10px] font-bold uppercase text-muted-foreground">Your name</label>
+                <input
+                  value={admin.announcementAuthor}
+                  onChange={(e) => updateAdmin("announcementAuthor", e.target.value)}
+                  placeholder="Tommy"
+                  className="mb-2 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none"
+                />
+                <label className="mb-1 block text-[10px] font-bold uppercase text-muted-foreground">Message</label>
+                <textarea
+                  value={admin.announcement}
+                  onChange={(e) => updateAdmin("announcement", e.target.value)}
+                  rows={3}
+                  placeholder="hey everyone 👋"
+                  className="w-full resize-y rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none"
+                />
+                <div className="mt-2 flex gap-2">
+                  <button
+                    onClick={async () => {
+                      if (!nickname) return;
+                      const msg = admin.announcement.trim();
+                      if (!msg) { toast.error("Type an announcement first"); return; }
+                      const next = { ...admin, announcementAt: Date.now() };
+                      setAdmin(next); saveAdmin(next);
+                      setSyncing(true);
+                      try {
+                        const saved = await saveSharedConfig(next, nickname);
+                        setAdmin(applySharedAdmin(saved));
+                        toast.success("📢 Announcement posted to everyone");
+                      } catch (e: any) {
+                        toast.error(e?.message || "Post failed");
+                      } finally { setSyncing(false); }
+                    }}
+                    disabled={syncing || !admin.announcement.trim()}
+                    className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-accent px-3 py-2 text-sm font-bold text-accent-foreground transition hover:opacity-90 disabled:opacity-50"
+                  >
+                    {syncing ? <Loader2 className="h-4 w-4 animate-spin" /> : <>📢 Post announcement</>}
+                  </button>
+                  <button
+                    onClick={async () => {
+                      if (!nickname) return;
+                      const next = { ...admin, announcement: "", announcementAt: 0 };
+                      setAdmin(next); saveAdmin(next);
+                      try {
+                        const saved = await saveSharedConfig(next, nickname);
+                        setAdmin(applySharedAdmin(saved));
+                        toast.success("Announcement cleared");
+                      } catch (e: any) { toast.error(e?.message || "Clear failed"); }
+                    }}
+                    className="rounded-lg border border-border bg-secondary/40 px-3 py-2 text-xs font-semibold text-muted-foreground hover:text-destructive hover:border-destructive"
+                  >
+                    Clear
+                  </button>
+                </div>
+              </div>
 
               <AdminInput label="Site title (header)" value={admin.siteTitle} placeholder="Bloxie.lua" onChange={(v) => updateAdmin("siteTitle", v)} />
               <AdminInput label="Tagline" value={admin.tagline} placeholder="Your Roblox Lua scripting buddy 🎮" onChange={(v) => updateAdmin("tagline", v)} />

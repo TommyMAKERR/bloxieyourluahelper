@@ -518,6 +518,15 @@ ${studio!.snapshot ? `\n--- GAME TREE SNAPSHOT ---\n${studio!.snapshot}\n--- END
           {admin.banner}
         </div>
       )}
+      {admin.announcement && (
+        <div className="flex items-start gap-3 rounded-xl border-2 border-accent/60 bg-accent/10 px-4 py-3 shadow-pink">
+          <span className="text-xl">📢</span>
+          <div className="min-w-0 flex-1 text-sm">
+            <span className="font-bold text-accent">{admin.announcementAuthor || "Tommy"}:</span>{" "}
+            <span className="whitespace-pre-wrap break-words">{admin.announcement}</span>
+          </div>
+        </div>
+      )}
       <div className="flex flex-wrap items-center gap-3 border-b border-border pb-4">
         <div className="flex h-11 w-11 items-center justify-center rounded-2xl gradient-hero shadow-neon">
           <Bot className="h-6 w-6 text-primary-foreground" />
